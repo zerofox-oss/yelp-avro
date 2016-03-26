@@ -34,9 +34,9 @@ module Avro
   end
 end
 
-require 'avro/collect_hash'
 require 'avro/schema'
 require 'avro/io'
 require 'avro/data_file'
 require 'avro/protocol'
 require 'avro/ipc'
+require 'avro/schema_normalization'

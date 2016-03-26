@@ -33,6 +33,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema.Type;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.io.BinaryData;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.EncoderFactory;
@@ -318,6 +319,25 @@ public class TestGenericData {
     mapper.readTree(parser);
   }
 
+  @Test public void testToStringEscapesControlCharsInBytes() throws Exception {
+    GenericData data = GenericData.get();
+    ByteBuffer bytes = ByteBuffer.wrap(new byte[] {'a', '\n', 'b'});
+    assertEquals("{\"bytes\": \"a\\nb\"}", data.toString(bytes));
+    assertEquals("{\"bytes\": \"a\\nb\"}", data.toString(bytes));
+  }
+
+  @Test public void testToStringFixed() throws Exception {
+    GenericData data = GenericData.get();
+    assertEquals("[97, 10, 98]", data.toString(new GenericData.Fixed(
+        Schema.createFixed("test", null, null, 3),
+        new byte[] {'a', '\n', 'b'})));
+  }
+
+  @Test public void testToStringDoesNotEscapeForwardSlash() throws Exception {
+    GenericData data = GenericData.get();
+    assertEquals("\"/\"", data.toString("/"));
+  }
+
   @Test public void testToStringNanInfinity() throws Exception {
     GenericData data = GenericData.get();
     assertEquals("\"Infinity\"",data.toString(Float.POSITIVE_INFINITY));
@@ -398,5 +418,78 @@ public class TestGenericData {
     ByteBuffer buffer_copy = (ByteBuffer) copy.get(byte_field.name());
 
     assertEquals(buffer, buffer_copy);
+  }
+
+  @Test
+  public void testValidateNullableEnum() {
+    List<Schema> unionTypes = new ArrayList<Schema>();
+    Schema schema;
+    Schema nullSchema = Schema.create(Type.NULL);
+    Schema enumSchema = Schema.createEnum("AnEnum", null, null, Arrays.asList("X","Y","Z"));
+    GenericEnumSymbol w = new GenericData.EnumSymbol(enumSchema, "W");
+    GenericEnumSymbol x = new GenericData.EnumSymbol(enumSchema, "X");
+    GenericEnumSymbol y = new GenericData.EnumSymbol(enumSchema, "Y");
+    GenericEnumSymbol z = new GenericData.EnumSymbol(enumSchema, "Z");
+
+    // null is first
+    unionTypes.clear();
+    unionTypes.add(nullSchema);
+    unionTypes.add(enumSchema);
+    schema = Schema.createUnion(unionTypes);
+
+    assertTrue(GenericData.get().validate(schema, z));
+    assertTrue(GenericData.get().validate(schema, y));
+    assertTrue(GenericData.get().validate(schema, x));
+    assertFalse(GenericData.get().validate(schema, w));
+    assertTrue(GenericData.get().validate(schema, null));
+
+    // null is last
+    unionTypes.clear();
+    unionTypes.add(enumSchema);
+    unionTypes.add(nullSchema);
+    schema = Schema.createUnion(unionTypes);
+
+    assertTrue(GenericData.get().validate(schema, z));
+    assertTrue(GenericData.get().validate(schema, y));
+    assertTrue(GenericData.get().validate(schema, x));
+    assertFalse(GenericData.get().validate(schema, w));
+    assertTrue(GenericData.get().validate(schema, null));
+  }
+
+  private enum anEnum { ONE,TWO,THREE };
+  @Test
+  public void validateRequiresGenericSymbolForEnumSchema() {
+    final Schema schema = Schema.createEnum("my_enum", "doc", "namespace", Arrays.asList("ONE","TWO","THREE"));
+    final GenericData gd = GenericData.get();
+    
+    /* positive cases */
+    assertTrue(gd.validate(schema, new GenericData.EnumSymbol(schema, "ONE")));
+    assertTrue(gd.validate(schema, new GenericData.EnumSymbol(schema, anEnum.ONE)));
+
+    /* negative cases */
+    assertFalse("We don't expect GenericData to allow a String datum for an enum schema", gd.validate(schema, "ONE"));
+    assertFalse("We don't expect GenericData to allow a Java Enum for an enum schema", gd.validate(schema, anEnum.ONE));
+  }
+
+  @Test
+  public void testValidateUnion() {
+      Schema type1Schema = SchemaBuilder.record("Type1")
+          .fields()
+          .requiredString("myString")
+          .requiredInt("myInt")
+          .endRecord();
+
+      Schema type2Schema = SchemaBuilder.record("Type2")
+          .fields()
+          .requiredString("myString")
+          .endRecord();
+
+      Schema unionSchema = SchemaBuilder.unionOf()
+          .type(type1Schema).and().type(type2Schema)
+          .endUnion();
+
+    GenericRecord record = new GenericData.Record(type2Schema);
+    record.put("myString", "myValue");
+    assertTrue(GenericData.get().validate(unionSchema, record));
   }
 }

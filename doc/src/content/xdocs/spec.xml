@@ -171,7 +171,9 @@
 	    user of this schema (optional).</li>
 	    <li><code>symbols</code>: a JSON array, listing symbols,
 	    as JSON strings (required).  All symbols in an enum must
-	    be unique; duplicates are prohibited.</li>
+	    be unique; duplicates are prohibited.  Every symbol must
+	    match the regular expression <code>[A-Za-z_][A-Za-z0-9_]*</code>
+	    (the same requirement as for <a href="#names">names</a>).</li>
 	  </ul>
 	  <p>For example, playing card suits might be defined with:</p>
 	  <source>
@@ -246,7 +248,7 @@
 
       </section> <!-- end complex types -->
 
-      <section>
+      <section id="names">
 	<title>Names</title>
         <p>Record, enums and fixed are named types.  Each has
           a <em>fullname</em> that is composed of two parts;
@@ -259,6 +261,8 @@
           <li>subsequently contain only <code>[A-Za-z0-9_]</code></li>
 	</ul>
         <p>A namespace is a dot-separated sequence of such names.
+        The empty string may also be used as a namespace to indicate the
+        null namespace.
         Equality of names (including field names and enum symbols)
         as well as fullnames is case-sensitive.</p>
         <p>In record, enum and fixed definitions, the fullname is
@@ -279,7 +283,8 @@
 	  if <code>"name": "X"</code> is specified, and this occurs
 	  within a field of the record definition
 	  of <code>org.foo.Y</code>, then the fullname
-	  is <code>org.foo.X</code>.</li>
+	  is <code>org.foo.X</code>. If there is no enclosing
+	  namespace then the null namespace is used.</li>
 	</ul>
 	<p>References to previously defined names are as in the latter
 	two cases above: if they contain a dot they are a fullname, if
@@ -868,7 +873,7 @@
               <li>that many bytes of <em>buffer data</em>.</li>
             </ul>
           </li>
-          <li>A message is always terminated by a zero-lenghted buffer.</li>
+          <li>A message is always terminated by a zero-length buffer.</li>
         </ul>
 
         <p>Framing is transparent to request and response message
@@ -1076,6 +1081,8 @@
                 <li>int is promotable to long, float, or double</li>
                 <li>long is promotable to float or double</li>
                 <li>float is promotable to double</li>
+                <li>string is promotable to bytes</li>
+                <li>bytes is promotable to string</li>
                 </ul>
             </li>
           </ul>
@@ -1401,6 +1408,67 @@ void initFPTable() {
           precisions match.</p>
 
       </section>
+
+      <section>
+        <title>Date</title>
+        <p>
+          The <code>date</code> logical type represents a date within the calendar, with no reference to a particular time zone or time of day.
+        </p>
+        <p>
+          A <code>date</code> logical type annotates an Avro <code>int</code>, where the int stores the number of days from the unix epoch, 1 January 1970 (ISO calendar).
+        </p>
+      </section>
+
+      <section>
+        <title>Time (millisecond precision)</title>
+        <p>
+          The <code>time-millis</code> logical type represents a time of day, with no reference to a particular calendar, time zone or date, with a precision of one millisecond.
+        </p>
+        <p>
+          A <code>time-millis</code> logical type annotates an Avro <code>int</code>, where the int stores the number of milliseconds after midnight, 00:00:00.000.
+        </p>
+      </section>
+
+      <section>
+        <title>Time (microsecond precision)</title>
+        <p>
+          The <code>time-micros</code> logical type represents a time of day, with no reference to a particular calendar, time zone or date, with a precision of one microsecond.
+        </p>
+        <p>
+          A <code>time-micros</code> logical type annotates an Avro <code>long</code>, where the long stores the number of microseconds after midnight, 00:00:00.000000.
+        </p>
+      </section>
+
+      <section>
+        <title>Timestamp (millisecond precision)</title>
+        <p>
+          The <code>timestamp-millis</code> logical type represents an instant on the global timeline, independent of a particular time zone or calendar, with a precision of one millisecond.
+        </p>
+        <p>
+          A <code>timestamp-millis</code> logical type annotates an Avro <code>long</code>, where the long stores the number of milliseconds from the unix epoch, 1 January 1970 00:00:00.000 UTC.
+        </p>
+      </section>
+
+      <section>
+        <title>Timestamp (microsecond precision)</title>
+        <p>
+          The <code>timestamp-micros</code> logical type represents an instant on the global timeline, independent of a particular time zone or calendar, with a precision of one microsecond.
+        </p>
+        <p>
+          A <code>timestamp-micros</code> logical type annotates an Avro <code>long</code>, where the long stores the number of microseconds from the unix epoch, 1 January 1970 00:00:00.000000 UTC.
+        </p>
+      </section>
+
+      <section>
+        <title>Duration</title>
+        <p>
+          The <code>duration</code> logical type represents an amount of time defined by a number of months, days and milliseconds. This is not equivalent to a number of milliseconds, because, depending on the moment in time from which the duration is measured, the number of days in the month and number of milliseconds in a day may differ. Other standard periods such as years, quarters, hours and minutes can be expressed through these basic periods.
+        </p>
+        <p>
+          A <code>duration</code> logical type annotates Avro <code>fixed</code> type of size 12, which stores three little-endian unsigned integers that represent durations at different granularities of time. The first stores a number in months, the second stores a number in days, and the third stores a number in milliseconds.
+        </p>
+      </section>
+
     </section>
 
   <p><em>Apache Avro, Avro, Apache, and the Avro and Apache logos are

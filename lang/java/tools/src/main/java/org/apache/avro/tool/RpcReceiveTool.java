@@ -38,9 +38,6 @@ import org.apache.avro.io.JsonEncoder;
 import org.apache.avro.ipc.Ipc;
 import org.apache.avro.ipc.Server;
 import org.apache.avro.ipc.generic.GenericResponder;
-import org.codehaus.jackson.JsonEncoding;
-import org.codehaus.jackson.JsonFactory;
-import org.codehaus.jackson.JsonGenerator;
 
 /**
  * Receives one RPC call and responds.  (The moral equivalent
@@ -82,14 +79,11 @@ public class RpcReceiveTool implements Tool {
       out.print(message.getName());
       out.print("\t");
       try {
-        JsonGenerator jsonGenerator = new JsonFactory().createJsonGenerator(
-            out, JsonEncoding.UTF8);
-        JsonEncoder jsonEncoder = EncoderFactory.get().jsonEncoder(message.getRequest(), jsonGenerator);
-
+        JsonEncoder jsonEncoder = EncoderFactory.get().jsonEncoder(message.getRequest(),
+            out);
         GenericDatumWriter<Object> writer = new GenericDatumWriter<Object>(
             message.getRequest());
         writer.write(request, jsonEncoder);
-        jsonGenerator.flush();
         jsonEncoder.flush();
         out.flush();
       } catch (IOException e) {
@@ -132,7 +126,7 @@ public class RpcReceiveTool implements Tool {
       .withRequiredArg()
       .ofType(String.class);
     OptionSet opts = p.parse(args.toArray(new String[0]));
-    args = opts.nonOptionArguments();
+    args = (List<String>)opts.nonOptionArguments();
 
     if (args.size() != 3) {
       err.println("Usage: uri protocol_file message_name (-data d | -file f)");

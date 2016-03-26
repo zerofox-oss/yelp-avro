@@ -68,7 +68,7 @@ public abstract class Symbol {
    * problem, we initialize the symbol with an array of nulls. Later we
    * fill the symbols. Not clean, but works. The other option is to not have
    * this field a final. But keeping it final and thus keeping symbol immutable
-   * gives some confort. See various generators how we generate records.
+   * gives some comfort. See various generators how we generate records.
    */
   public final Symbol[] production;
   /**
@@ -190,12 +190,26 @@ public abstract class Symbol {
         List<Fixup> l = map2.get(s);
         if (l == null) {
           System.arraycopy(p, 0, out, j, p.length);
+          // Copy any fixups that will be applied to p to add missing symbols
+          for (List<Fixup> fixups : map2.values()) {
+            copyFixups(fixups, out, j, p);
+          }
         } else {
           l.add(new Fixup(out, j));
         }
         j += p.length;
       } else {
         out[j++] = s;
+      }
+    }
+  }
+
+  private static void copyFixups(List<Fixup> fixups, Symbol[] out, int outPos,
+                                 Symbol[] toCopy) {
+    for (int i = 0, n = fixups.size(); i < n; i += 1) {
+      Fixup fixup = fixups.get(i);
+      if (fixup.symbols == toCopy) {
+        fixups.add(new Fixup(out, fixup.pos + outPos));
       }
     }
   }
@@ -348,6 +362,45 @@ public abstract class Symbol {
       return result;
     }
 
+  }
+  
+  /**
+   * Returns true if the Parser contains any Error symbol, indicating that it may fail 
+   * for some inputs.
+   */
+  public static boolean hasErrors(Symbol symbol) {
+    switch(symbol.kind) {
+    case ALTERNATIVE:
+      return hasErrors(symbol, ((Alternative) symbol).symbols);
+    case EXPLICIT_ACTION:
+      return false;
+    case IMPLICIT_ACTION:
+      return symbol instanceof ErrorAction;
+    case REPEATER:
+      Repeater r = (Repeater) symbol;
+      return hasErrors(r.end) || hasErrors(symbol, r.production);
+    case ROOT:
+    case SEQUENCE:
+      return hasErrors(symbol, symbol.production);
+    case TERMINAL:
+      return false;
+    default:
+      throw new RuntimeException("unknown symbol kind: " + symbol.kind);
+    }
+  }
+  
+  private static boolean hasErrors(Symbol root, Symbol[] symbols) {
+    if(null != symbols) {
+      for(Symbol s: symbols) {
+        if (s == root) {
+          continue;
+        }
+        if (hasErrors(s)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
     
   public static class Alternative extends Symbol {

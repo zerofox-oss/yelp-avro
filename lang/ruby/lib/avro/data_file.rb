@@ -20,7 +20,8 @@ module Avro
   module DataFile
     VERSION = 1
     MAGIC = "Obj" + [VERSION].pack('c')
-    MAGIC_SIZE = MAGIC.size
+    MAGIC.force_encoding('BINARY') if MAGIC.respond_to?(:force_encoding)
+    MAGIC_SIZE = MAGIC.respond_to?(:bytesize) ? MAGIC.bytesize : MAGIC.size
     SYNC_SIZE = 16
     SYNC_INTERVAL = 4000 * SYNC_SIZE
     META_SCHEMA = Schema.parse('{"type": "map", "values": "bytes"}')
@@ -92,22 +93,22 @@ module Avro
       attr_reader :writer, :encoder, :datum_writer, :buffer_writer, :buffer_encoder, :sync_marker, :meta, :codec
       attr_accessor :block_count
 
-      def initialize(writer, datum_writer, writers_schema=nil, codec=nil)
+      def initialize(writer, datum_writer, writers_schema=nil, codec=nil, meta={})
         # If writers_schema is not present, presume we're appending
         @writer = writer
         @encoder = IO::BinaryEncoder.new(@writer)
         @datum_writer = datum_writer
+        @meta = meta
         @buffer_writer = StringIO.new('', 'w')
+        @buffer_writer.set_encoding('BINARY') if @buffer_writer.respond_to?(:set_encoding)
         @buffer_encoder = IO::BinaryEncoder.new(@buffer_writer)
         @block_count = 0
-
-        @meta = {}
 
         if writers_schema
           @sync_marker = Writer.generate_sync_marker
           @codec = DataFile.get_codec(codec)
-          meta['avro.codec'] = @codec.codec_name.to_s
-          meta['avro.schema'] = writers_schema.to_s
+          @meta['avro.codec'] = @codec.codec_name.to_s
+          @meta['avro.schema'] = writers_schema.to_s
           datum_writer.writers_schema = writers_schema
           write_header
         else
@@ -117,12 +118,12 @@ module Avro
           # FIXME(jmhodges): collect arbitrary metadata
           # collect metadata
           @sync_marker = dfr.sync_marker
-          meta['avro.codec'] = dfr.meta['avro.codec']
+          @meta['avro.codec'] = dfr.meta['avro.codec']
           @codec = DataFile.get_codec(meta['avro.codec'])
 
           # get schema used to write existing file
           schema_from_file = dfr.meta['avro.schema']
-          meta['avro.schema'] = schema_from_file
+          @meta['avro.schema'] = schema_from_file
           datum_writer.writers_schema = Schema.parse(schema_from_file)
 
           # seek to the end of the file and prepare for writing
@@ -181,7 +182,7 @@ module Avro
           # write number of items in block and block size in bytes
           encoder.write_long(block_count)
           to_write = codec.compress(buffer_writer.string)
-          encoder.write_long(to_write.size)
+          encoder.write_long(to_write.respond_to?(:bytesize) ? to_write.bytesize : to_write.size)
 
           # write block contents
           writer.write(to_write)
@@ -332,8 +333,31 @@ module Avro
       end
     end
 
+    class SnappyCodec
+      def codec_name; 'snappy'; end
+
+      def decompress(data)
+        load_snappy!
+        Snappy.inflate(data)
+      end
+
+      def compress(data)
+        load_snappy!
+        Snappy.deflate(data)
+      end
+
+      private
+
+      def load_snappy!
+        require 'snappy' unless defined?(Snappy)
+      rescue LoadError
+        raise LoadError, "Snappy compression is not available, please install the `snappy` gem."
+      end
+    end
+
     DataFile.register_codec NullCodec
     DataFile.register_codec DeflateCodec
+    DataFile.register_codec SnappyCodec
 
     # TODO this constant won't be updated if you register another codec.
     # Deprecated in favor of Avro::DataFile::codecs

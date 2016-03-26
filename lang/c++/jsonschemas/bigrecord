@@ -35,6 +35,13 @@
             }
         },
         {
+            "name": "recordmap",
+            "type": {
+                "type": "map",
+                "values": "Nested"
+            }
+        },
+        {
             "name": "myarray",
             "type": {
                 "type": "array",

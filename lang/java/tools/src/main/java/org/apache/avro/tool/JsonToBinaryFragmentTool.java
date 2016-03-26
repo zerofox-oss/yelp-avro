@@ -46,7 +46,7 @@ public class JsonToBinaryFragmentTool implements Tool {
         .ofType(String.class);
     
     OptionSet optionSet = optionParser.parse(args.toArray(new String[0]));
-    List<String> nargs = optionSet.nonOptionArguments();
+    List<String> nargs = (List<String>)optionSet.nonOptionArguments();
     String schemaFile = schemaFileOption.value(optionSet);
     
     if (nargs.size() != (schemaFile == null ? 2 : 1)) {
@@ -62,7 +62,7 @@ public class JsonToBinaryFragmentTool implements Tool {
       schema = new Schema.Parser().parse(nargs.get(0));
       inputFile = nargs.get(1);
     } else {
-      schema = new Schema.Parser().parse(Util.openFromFS(schemaFile));
+      schema = Util.parseSchemaFromFS(schemaFile);
       inputFile = nargs.get(0);
     }
     InputStream input = Util.fileOrStdin(inputFile, stdin);

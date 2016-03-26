@@ -131,7 +131,9 @@ public class JsonEncoder extends ParsingEncoder implements Parser.ActionHandler 
    *          The JsonGenerator to direct output to. Cannot be null.
    * @throws IOException
    * @return this JsonEncoder
+   * @deprecated internal method
    */
+  @Deprecated
   public JsonEncoder configure(JsonGenerator generator) throws IOException {
     if (null == generator)
       throw new NullPointerException("JsonGenerator cannot be null");
@@ -200,9 +202,7 @@ public class JsonEncoder extends ParsingEncoder implements Parser.ActionHandler 
       writeBytes(bytes.array(), bytes.position(), bytes.remaining());
     } else {
       byte[] b = new byte[bytes.remaining()];
-      for (int i = 0; i < b.length; i++) {
-        b[i] = bytes.get();
-      }
+      bytes.duplicate().get(b);
       writeBytes(b);
     }
   }

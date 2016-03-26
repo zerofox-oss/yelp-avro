@@ -29,6 +29,7 @@ import org.apache.avro.io.EncoderFactory;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.avro.thrift.test.Test;
+import org.apache.avro.thrift.test.FooOrBar;
 import org.apache.avro.thrift.test.E;
 import org.apache.avro.thrift.test.Nested;
 
@@ -42,6 +43,7 @@ public class TestThrift {
     test.setBoolField(true);
     test.setByteField((byte)2);
     test.setI16Field((short)3);
+    test.setI16OptionalField((short)14);
     test.setI32Field(4);
     test.setI64Field(5L);
     test.setDoubleField(2.0);
@@ -52,6 +54,7 @@ public class TestThrift {
     test.setSetField(Collections.singleton(8));
     test.setEnumField(E.X);
     test.setStructField(new Nested(9));
+    test.setFooOrBar(FooOrBar.foo("x"));
 
     System.out.println(test);
 
@@ -63,7 +66,9 @@ public class TestThrift {
     Test test = new Test();
     test.setBoolField(true);
     test.setByteField((byte)2);
+    test.setByteOptionalField((byte)4);
     test.setI16Field((short)3);
+    test.setI16OptionalField((short)15);
     test.setI64Field(5L);
     test.setDoubleField(2.0);
 
@@ -72,7 +77,6 @@ public class TestThrift {
     check(test);
   }
 
-
   private void check(Test test) throws Exception {
 
     ByteArrayOutputStream bao = new ByteArrayOutputStream();
@@ -80,7 +84,7 @@ public class TestThrift {
     Encoder e = EncoderFactory.get().binaryEncoder(bao, null);
     w.write(test, e);
     e.flush();
-    
+
     Object o = new ThriftDatumReader<Test>(Test.class).read
       (null,
        DecoderFactory.get().createBinaryDecoder

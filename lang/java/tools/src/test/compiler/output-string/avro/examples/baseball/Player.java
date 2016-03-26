@@ -5,10 +5,13 @@
  */
 package avro.examples.baseball;  
 @SuppressWarnings("all")
+/** 選手 is Japanese for player. */
 @org.apache.avro.specific.AvroGenerated
 public class Player extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
-  public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Player\",\"namespace\":\"avro.examples.baseball\",\"fields\":[{\"name\":\"number\",\"type\":\"int\"},{\"name\":\"first_name\",\"type\":{\"type\":\"string\",\"avro.java.string\":\"String\"}},{\"name\":\"last_name\",\"type\":{\"type\":\"string\",\"avro.java.string\":\"String\"}},{\"name\":\"position\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"enum\",\"name\":\"Position\",\"symbols\":[\"P\",\"C\",\"B1\",\"B2\",\"B3\",\"SS\",\"LF\",\"CF\",\"RF\",\"DH\"]}}}]}");
+  private static final long serialVersionUID = 3865593031278745715L;
+  public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Player\",\"namespace\":\"avro.examples.baseball\",\"doc\":\"選手 is Japanese for player.\",\"fields\":[{\"name\":\"number\",\"type\":\"int\",\"doc\":\"The number of the player\"},{\"name\":\"first_name\",\"type\":{\"type\":\"string\",\"avro.java.string\":\"String\"}},{\"name\":\"last_name\",\"type\":{\"type\":\"string\",\"avro.java.string\":\"String\"}},{\"name\":\"position\",\"type\":{\"type\":\"array\",\"items\":{\"type\":\"enum\",\"name\":\"Position\",\"symbols\":[\"P\",\"C\",\"B1\",\"B2\",\"B3\",\"SS\",\"LF\",\"CF\",\"RF\",\"DH\"]}}}]}");
   public static org.apache.avro.Schema getClassSchema() { return SCHEMA$; }
+  /** The number of the player */
   @Deprecated public int number;
   @Deprecated public java.lang.String first_name;
   @Deprecated public java.lang.String last_name;
@@ -23,6 +26,7 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
 
   /**
    * All-args constructor.
+   * @param number The number of the player
    */
   public Player(java.lang.Integer number, java.lang.String first_name, java.lang.String last_name, java.util.List<avro.examples.baseball.Position> position) {
     this.number = number;
@@ -56,6 +60,7 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
 
   /**
    * Gets the value of the 'number' field.
+   * @return The number of the player
    */
   public java.lang.Integer getNumber() {
     return number;
@@ -63,6 +68,7 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
 
   /**
    * Sets the value of the 'number' field.
+   * The number of the player
    * @param value the value to set.
    */
   public void setNumber(java.lang.Integer value) {
@@ -114,17 +120,28 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
     this.position = value;
   }
 
-  /** Creates a new Player RecordBuilder */
+  /**
+   * Creates a new Player RecordBuilder.
+   * @return A new Player RecordBuilder
+   */
   public static avro.examples.baseball.Player.Builder newBuilder() {
     return new avro.examples.baseball.Player.Builder();
   }
   
-  /** Creates a new Player RecordBuilder by copying an existing Builder */
+  /**
+   * Creates a new Player RecordBuilder by copying an existing Builder.
+   * @param other The existing builder to copy.
+   * @return A new Player RecordBuilder
+   */
   public static avro.examples.baseball.Player.Builder newBuilder(avro.examples.baseball.Player.Builder other) {
     return new avro.examples.baseball.Player.Builder(other);
   }
   
-  /** Creates a new Player RecordBuilder by copying an existing Player instance */
+  /**
+   * Creates a new Player RecordBuilder by copying an existing Player instance.
+   * @param other The existing instance to copy.
+   * @return A new Player RecordBuilder
+   */
   public static avro.examples.baseball.Player.Builder newBuilder(avro.examples.baseball.Player other) {
     return new avro.examples.baseball.Player.Builder(other);
   }
@@ -135,6 +152,7 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
   public static class Builder extends org.apache.avro.specific.SpecificRecordBuilderBase<Player>
     implements org.apache.avro.data.RecordBuilder<Player> {
 
+    /** The number of the player */
     private int number;
     private java.lang.String first_name;
     private java.lang.String last_name;
@@ -145,7 +163,10 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
       super(avro.examples.baseball.Player.SCHEMA$);
     }
     
-    /** Creates a Builder by copying an existing Builder */
+    /**
+     * Creates a Builder by copying an existing Builder.
+     * @param other The existing Builder to copy.
+     */
     private Builder(avro.examples.baseball.Player.Builder other) {
       super(other);
       if (isValidValue(fields()[0], other.number)) {
@@ -166,7 +187,10 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
       }
     }
     
-    /** Creates a Builder by copying an existing Player instance */
+    /**
+     * Creates a Builder by copying an existing Player instance
+     * @param other The existing instance to copy.
+     */
     private Builder(avro.examples.baseball.Player other) {
             super(avro.examples.baseball.Player.SCHEMA$);
       if (isValidValue(fields()[0], other.number)) {
@@ -187,99 +211,159 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
       }
     }
 
-    /** Gets the value of the 'number' field */
+    /**
+      * Gets the value of the 'number' field.
+      * The number of the player
+      * @return The value.
+      */
     public java.lang.Integer getNumber() {
       return number;
     }
-    
-    /** Sets the value of the 'number' field */
+
+    /**
+      * Sets the value of the 'number' field.
+      * The number of the player
+      * @param value The value of 'number'.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder setNumber(int value) {
       validate(fields()[0], value);
       this.number = value;
       fieldSetFlags()[0] = true;
       return this; 
     }
-    
-    /** Checks whether the 'number' field has been set */
+
+    /**
+      * Checks whether the 'number' field has been set.
+      * The number of the player
+      * @return True if the 'number' field has been set, false otherwise.
+      */
     public boolean hasNumber() {
       return fieldSetFlags()[0];
     }
-    
-    /** Clears the value of the 'number' field */
+
+
+    /**
+      * Clears the value of the 'number' field.
+      * The number of the player
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder clearNumber() {
       fieldSetFlags()[0] = false;
       return this;
     }
 
-    /** Gets the value of the 'first_name' field */
+    /**
+      * Gets the value of the 'first_name' field.
+      * @return The value.
+      */
     public java.lang.String getFirstName() {
       return first_name;
     }
-    
-    /** Sets the value of the 'first_name' field */
+
+    /**
+      * Sets the value of the 'first_name' field.
+      * @param value The value of 'first_name'.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder setFirstName(java.lang.String value) {
       validate(fields()[1], value);
       this.first_name = value;
       fieldSetFlags()[1] = true;
       return this; 
     }
-    
-    /** Checks whether the 'first_name' field has been set */
+
+    /**
+      * Checks whether the 'first_name' field has been set.
+      * @return True if the 'first_name' field has been set, false otherwise.
+      */
     public boolean hasFirstName() {
       return fieldSetFlags()[1];
     }
-    
-    /** Clears the value of the 'first_name' field */
+
+
+    /**
+      * Clears the value of the 'first_name' field.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder clearFirstName() {
       first_name = null;
       fieldSetFlags()[1] = false;
       return this;
     }
 
-    /** Gets the value of the 'last_name' field */
+    /**
+      * Gets the value of the 'last_name' field.
+      * @return The value.
+      */
     public java.lang.String getLastName() {
       return last_name;
     }
-    
-    /** Sets the value of the 'last_name' field */
+
+    /**
+      * Sets the value of the 'last_name' field.
+      * @param value The value of 'last_name'.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder setLastName(java.lang.String value) {
       validate(fields()[2], value);
       this.last_name = value;
       fieldSetFlags()[2] = true;
       return this; 
     }
-    
-    /** Checks whether the 'last_name' field has been set */
+
+    /**
+      * Checks whether the 'last_name' field has been set.
+      * @return True if the 'last_name' field has been set, false otherwise.
+      */
     public boolean hasLastName() {
       return fieldSetFlags()[2];
     }
-    
-    /** Clears the value of the 'last_name' field */
+
+
+    /**
+      * Clears the value of the 'last_name' field.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder clearLastName() {
       last_name = null;
       fieldSetFlags()[2] = false;
       return this;
     }
 
-    /** Gets the value of the 'position' field */
+    /**
+      * Gets the value of the 'position' field.
+      * @return The value.
+      */
     public java.util.List<avro.examples.baseball.Position> getPosition() {
       return position;
     }
-    
-    /** Sets the value of the 'position' field */
+
+    /**
+      * Sets the value of the 'position' field.
+      * @param value The value of 'position'.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder setPosition(java.util.List<avro.examples.baseball.Position> value) {
       validate(fields()[3], value);
       this.position = value;
       fieldSetFlags()[3] = true;
       return this; 
     }
-    
-    /** Checks whether the 'position' field has been set */
+
+    /**
+      * Checks whether the 'position' field has been set.
+      * @return True if the 'position' field has been set, false otherwise.
+      */
     public boolean hasPosition() {
       return fieldSetFlags()[3];
     }
-    
-    /** Clears the value of the 'position' field */
+
+
+    /**
+      * Clears the value of the 'position' field.
+      * @return This builder.
+      */
     public avro.examples.baseball.Player.Builder clearPosition() {
       position = null;
       fieldSetFlags()[3] = false;
@@ -300,4 +384,21 @@ public class Player extends org.apache.avro.specific.SpecificRecordBase implemen
       }
     }
   }
+
+  private static final org.apache.avro.io.DatumWriter
+    WRITER$ = new org.apache.avro.specific.SpecificDatumWriter(SCHEMA$);  
+
+  @Override public void writeExternal(java.io.ObjectOutput out)
+    throws java.io.IOException {
+    WRITER$.write(this, org.apache.avro.specific.SpecificData.getEncoder(out));
+  }
+
+  private static final org.apache.avro.io.DatumReader
+    READER$ = new org.apache.avro.specific.SpecificDatumReader(SCHEMA$);  
+
+  @Override public void readExternal(java.io.ObjectInput in)
+    throws java.io.IOException {
+    READER$.read(this, org.apache.avro.specific.SpecificData.getDecoder(in));
+  }
+
 }

@@ -18,6 +18,7 @@
 package org.apache.avro.reflect;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -40,10 +41,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.avro.AvroRemoteException;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.AvroTypeException;
+import org.apache.avro.Conversion;
+import org.apache.avro.LogicalType;
 import org.apache.avro.Protocol;
 import org.apache.avro.Protocol.Message;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.io.BinaryData;
@@ -52,6 +56,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.FixedSize;
 import org.apache.avro.specific.SpecificData;
+import org.apache.avro.SchemaNormalization;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.node.NullNode;
 
@@ -73,6 +78,11 @@ public class ReflectData extends SpecificData {
     @Override
     protected Schema createFieldSchema(Field field, Map<String, Schema> names) {
       Schema schema = super.createFieldSchema(field, names);
+      if (field.getType().isPrimitive()) {
+        // for primitive values, such as int, a null will result in a
+        // NullPointerException at read time
+        return schema;
+      }
       return makeNullable(schema);
     }
   }
@@ -164,13 +174,25 @@ public class ReflectData extends SpecificData {
     if (super.isRecord(datum)) return true;
     if (datum instanceof Collection) return false;
     if (datum instanceof Map) return false;
+    if (datum instanceof GenericFixed) return false;
     return getSchema(datum.getClass()).getType() == Schema.Type.RECORD;
   }
 
+  /**
+   * Returns true also for non-string-keyed maps, which are written as an array
+   * of key/value pair records.
+   */
   @Override
   protected boolean isArray(Object datum) {
     if (datum == null) return false;
-    return (datum instanceof Collection) || datum.getClass().isArray();
+    return (datum instanceof Collection)
+      || datum.getClass().isArray()
+      || isNonStringMap(datum);
+  }
+
+  @Override
+  protected Collection getArrayAsCollection(Object datum) {
+    return (datum instanceof Map) ? ((Map)datum).entrySet() : (Collection)datum;
   }
 
   @Override
@@ -205,7 +227,7 @@ public class ReflectData extends SpecificData {
     }
   }
   
-  private static final ConcurrentHashMap<Class<?>, ClassAccessorData> 
+  static final ConcurrentHashMap<Class<?>, ClassAccessorData> 
     ACCESSOR_CACHE = new ConcurrentHashMap<Class<?>, ClassAccessorData>();
 
   private static class ClassAccessorData {
@@ -331,8 +353,41 @@ public class ReflectData extends SpecificData {
     ARRAY_CLASSES.put(boolean.class, boolean[].class);
   }
 
+  /**
+   * It returns false for non-string-maps because Avro writes out such maps
+   * as an array of records. Even their JSON representation is an array.
+   */
+  protected boolean isMap(Object datum) {
+    return (datum instanceof Map) && !isNonStringMap(datum);
+  }
+
+  /* Without the Field or Schema corresponding to the datum, it is
+   * not possible to accurately find out the non-stringable nature
+   * of the key. So we check the class of the keys.
+   * If the map is empty, then it doesn't matter whether its considered
+   * a string-key map or a non-string-key map
+   */
+  private boolean isNonStringMap(Object datum) {
+    if (datum instanceof Map) {
+      Map m = (Map)datum;
+      if (m.size() > 0) {
+        Class keyClass = m.keySet().iterator().next().getClass();
+        if (isStringable(keyClass) || keyClass == String.class)
+          return false;
+        return true;
+      }
+    }
+    return false;
+  }
+
   @Override
   public Class getClass(Schema schema) {
+    // see if the element class will be converted and use that class
+    Conversion<?> conversion = getConversionFor(schema.getLogicalType());
+    if (conversion != null) {
+      return conversion.getConvertedType();
+    }
+
     switch (schema.getType()) {
     case ARRAY:
       Class collectionClass = getClassProp(schema, CLASS_PROP);
@@ -361,6 +416,78 @@ public class ReflectData extends SpecificData {
     }
   }
 
+  static final String NS_MAP_ARRAY_RECORD =   // record name prefix
+    "org.apache.avro.reflect.Pair";
+  static final String NS_MAP_KEY = "key";     // name of key field
+  static final int NS_MAP_KEY_INDEX = 0;      // index of key field
+  static final String NS_MAP_VALUE = "value"; // name of value field
+  static final int NS_MAP_VALUE_INDEX = 1;    // index of value field
+
+  /*
+   * Non-string map-keys need special handling and we convert it to an
+   * array of records as: [{"key":{...}, "value":{...}}]
+   */
+  Schema createNonStringMapSchema(Type keyType, Type valueType,
+                                  Map<String, Schema> names) {
+    Schema keySchema = createSchema(keyType, names);
+    Schema valueSchema = createSchema(valueType, names);
+    Schema.Field keyField = 
+      new Schema.Field(NS_MAP_KEY, keySchema, null, null);
+    Schema.Field valueField = 
+      new Schema.Field(NS_MAP_VALUE, valueSchema, null, null);
+    String name = getNameForNonStringMapRecord(keyType, valueType,
+      keySchema, valueSchema);
+    Schema elementSchema = Schema.createRecord(name, null, null, false);
+    elementSchema.setFields(Arrays.asList(keyField, valueField));
+    Schema arraySchema = Schema.createArray(elementSchema);
+    return arraySchema;
+  }
+
+  /*
+   * Gets a unique and consistent name per key-value pair. So if the same
+   * key-value are seen in another map, the same name is generated again.
+   */
+  private String getNameForNonStringMapRecord(Type keyType, Type valueType,
+                                  Schema keySchema, Schema valueSchema) {
+
+    // Generate a nice name for classes in java* package
+    if (keyType instanceof Class && valueType instanceof Class) {
+
+      Class keyClass = (Class)keyType;
+      Class valueClass = (Class)valueType;
+      Package pkg1 = keyClass.getPackage();
+      Package pkg2 = valueClass.getPackage();
+
+      if (pkg1 != null && pkg1.getName().startsWith("java") &&
+        pkg2 != null && pkg2.getName().startsWith("java")) {
+        return NS_MAP_ARRAY_RECORD +
+          keyClass.getSimpleName() + valueClass.getSimpleName();
+      }
+    }
+
+    String name = keySchema.getFullName() + valueSchema.getFullName();
+    long fingerprint = 0;
+    try {
+      fingerprint = SchemaNormalization.fingerprint64(name.getBytes("UTF-8"));
+    } catch (UnsupportedEncodingException e) {
+      String msg = "Unable to create fingerprint for ("
+                   + keyType + ", "  + valueType + ") pair";
+      throw new AvroRuntimeException(msg, e);
+    }
+    if (fingerprint < 0) fingerprint = -fingerprint;  // ignore sign
+    String fpString = Long.toString(fingerprint, 16); // hex
+    return NS_MAP_ARRAY_RECORD + fpString;
+  }
+
+  static boolean isNonStringMapSchema(Schema s) {
+    if (s != null && s.getType() == Schema.Type.ARRAY) {
+      Class c = getClassProp(s, CLASS_PROP);
+      if (c != null && Map.class.isAssignableFrom (c))
+        return true;
+    }
+    return false;
+  }
+
   @Override
   protected Schema createSchema(Type type, Map<String,Schema> names) {
     if (type instanceof GenericArrayType) {                  // generic array
@@ -375,14 +502,16 @@ public class ReflectData extends SpecificData {
       Class raw = (Class)ptype.getRawType();
       Type[] params = ptype.getActualTypeArguments();
       if (Map.class.isAssignableFrom(raw)) {                 // Map
-        Schema schema = Schema.createMap(createSchema(params[1], names));
         Class key = (Class)params[0];
         if (isStringable(key)) {                             // Stringable key
+          Schema schema = Schema.createMap(createSchema(params[1], names));
           schema.addProp(KEY_CLASS_PROP, key.getName());
+          return schema;
         } else if (key != String.class) {
-          throw new AvroTypeException("Map key class not String: "+key);
+          Schema schema = createNonStringMapSchema(params[0], params[1], names);
+          schema.addProp(CLASS_PROP, raw.getName());
+          return schema;
         }
-        return schema;
       } else if (Collection.class.isAssignableFrom(raw)) {   // Collection
         if (params.length != 1)
           throw new AvroTypeException("No array type specified.");
@@ -432,6 +561,10 @@ public class ReflectData extends SpecificData {
         return Schema.create(Schema.Type.BYTES);
       if (Collection.class.isAssignableFrom(c))              // array
         throw new AvroRuntimeException("Can't find element type of Collection");
+      Conversion<?> conversion = getConversionByClass(c);
+      if (conversion != null) {
+        return conversion.getRecommendedSchema();
+      }
       String fullName = c.getName();
       Schema schema = names.get(fullName);
       if (schema == null) {
@@ -540,8 +673,23 @@ public class ReflectData extends SpecificData {
 
   /** Create and return a union of the null schema and the provided schema. */
   public static Schema makeNullable(Schema schema) {
-    return Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.NULL),
-                                            schema));
+    if (schema.getType() == Schema.Type.UNION) {
+      // check to see if the union already contains NULL
+      for (Schema subType : schema.getTypes()) {
+        if (subType.getType() == Schema.Type.NULL) {
+          return schema;
+        }
+      }
+      // add null as the first type in a new union
+      List<Schema> withNull = new ArrayList<Schema>();
+      withNull.add(Schema.create(Schema.Type.NULL));
+      withNull.addAll(schema.getTypes());
+      return Schema.createUnion(withNull);
+    } else {
+      // create a union with null
+      return Schema.createUnion(Arrays.asList(Schema.create(Schema.Type.NULL),
+          schema));
+    }
   }
 
   private static final Map<Class<?>,Field[]> FIELDS_CACHE =
@@ -724,5 +872,32 @@ public class ReflectData extends SpecificData {
       schema.addAlias(alias.alias(), space);
     }
   }
-  
+
+  @Override
+  public Object createFixed(Object old, Schema schema) {
+    // SpecificData will try to instantiate the type returned by getClass, but
+    // that is the converted class and can't be constructed.
+    LogicalType logicalType = schema.getLogicalType();
+    if (logicalType != null) {
+      Conversion<?> conversion = getConversionFor(schema.getLogicalType());
+      if (conversion != null) {
+        return new GenericData.Fixed(schema);
+      }
+    }
+    return super.createFixed(old, schema);
+  }
+
+  @Override
+  public Object newRecord(Object old, Schema schema) {
+    // SpecificData will try to instantiate the type returned by getClass, but
+    // that is the converted class and can't be constructed.
+    LogicalType logicalType = schema.getLogicalType();
+    if (logicalType != null) {
+      Conversion<?> conversion = getConversionFor(schema.getLogicalType());
+      if (conversion != null) {
+        return new GenericData.Record(schema);
+      }
+    }
+    return super.newRecord(old, schema);
+  }
 }

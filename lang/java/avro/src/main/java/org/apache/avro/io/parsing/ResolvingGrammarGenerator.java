@@ -151,8 +151,22 @@ public class ResolvingGrammarGenerator extends ValidatingGrammarGenerator {
         }
         break;
   
+      case BYTES:
+        switch (writerType) {
+        case STRING:
+          return Symbol.resolve(super.generate(writer, seen), Symbol.BYTES);
+        }
+        break;
+  
+      case STRING:
+        switch (writerType) {
+        case BYTES:
+          return Symbol.resolve(super.generate(writer, seen), Symbol.STRING);
+        }
+        break;
+  
       case UNION:
-        int j = bestBranch(reader, writer);
+        int j = bestBranch(reader, writer, seen);
         if (j >= 0) {
           Symbol s = generate(writer, reader.getTypes().get(j), seen);
           return Symbol.seq(Symbol.unionAdjustAction(j, s), Symbol.UNION);
@@ -161,12 +175,11 @@ public class ResolvingGrammarGenerator extends ValidatingGrammarGenerator {
       case NULL:
       case BOOLEAN:
       case INT:
-      case STRING:
-      case BYTES:
       case ENUM:
       case ARRAY:
       case MAP:
       case RECORD:
+      case FIXED:
         break;
       default:
         throw new RuntimeException("Unexpected schema type: " + readerType);
@@ -303,8 +316,9 @@ public class ResolvingGrammarGenerator extends ValidatingGrammarGenerator {
    * @param s The schema for the object being encoded.
    * @param n The Json node to encode.
    * @throws IOException
+   * @deprecated internal method
    */
-  
+  @Deprecated
   public static void encode(Encoder e, Schema s, JsonNode n)
     throws IOException {
     switch (s.getType()) {
@@ -413,23 +427,63 @@ public class ResolvingGrammarGenerator extends ValidatingGrammarGenerator {
     return Symbol.enumAdjustAction(rsymbols.size(), adjustments);
   }
 
-  private static int bestBranch(Schema r, Schema w) {
+  /**
+   * This checks if the symbol itself is an error or if there is an error in
+   * its production.
+   *
+   * When the symbol is created for a record, this checks whether the record
+   * fields are present (the symbol is not an error action) and that all of the
+   * fields have a non-error action. Record fields may have nested error
+   * actions.
+   *
+   * @return true if the symbol is an error or if its production has an error
+   */
+  private boolean hasMatchError(Symbol sym) {
+    if (sym instanceof Symbol.ErrorAction) {
+      return true;
+    } else {
+      for (int i = 0; i < sym.production.length; i += 1) {
+        if (sym.production[i] instanceof Symbol.ErrorAction) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private int bestBranch(Schema r, Schema w, Map<LitS, Symbol> seen) throws IOException {
     Schema.Type vt = w.getType();
       // first scan for exact match
       int j = 0;
+      int structureMatch = -1;
       for (Schema b : r.getTypes()) {
         if (vt == b.getType())
-          if (vt == Schema.Type.RECORD || vt == Schema.Type.ENUM || 
+          if (vt == Schema.Type.RECORD || vt == Schema.Type.ENUM ||
               vt == Schema.Type.FIXED) {
             String vname = w.getFullName();
             String bname = b.getFullName();
-            if ((vname != null && vname.equals(bname))
-                || vname == bname && vt == Schema.Type.RECORD)
+            // return immediately if the name matches exactly according to spec
+            if (vname != null && vname.equals(bname))
               return j;
+
+            if (vt == Schema.Type.RECORD &&
+                !hasMatchError(resolveRecords(w, b, seen))) {
+              String vShortName = w.getName();
+              String bShortName = b.getName();
+              // use the first structure match or one where the name matches
+              if ((structureMatch < 0) ||
+                  (vShortName != null && vShortName.equals(bShortName))) {
+                structureMatch = j;
+              }
+            }
           } else
             return j;
         j++;
       }
+
+      // if there is a record structure match, return it
+      if (structureMatch >= 0)
+        return structureMatch;
 
       // then scan match via numeric promotion
       j = 0;
@@ -445,6 +499,18 @@ public class ResolvingGrammarGenerator extends ValidatingGrammarGenerator {
         case FLOAT:
           switch (b.getType()) {
           case DOUBLE:
+            return j;
+          }
+          break;
+        case STRING:
+          switch (b.getType()) {
+          case BYTES:
+            return j;
+          }
+          break;
+        case BYTES:
+          switch (b.getType()) {
+          case STRING:
             return j;
           }
           break;
