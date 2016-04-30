@@ -16,6 +16,7 @@
 import unittest
 
 from decimal import Decimal
+import datetime
 
 try:
   from cStringIO import StringIO
@@ -38,6 +39,15 @@ SCHEMAS_TO_VALIDATE = (
   ('"float"', 1234.0),
   ('"double"', 1234.0),
   ('{"type": "fixed", "name": "Test", "size": 1}', 'B'),
+  ('{"type": "int", "logicalType": "date"}', datetime.date(2000, 1, 1)),
+  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 123000)),
+  ('{"type": "int", "logicalType": "time-millis", "fsp" : 2}', datetime.time(2, 2, 1, 120000)),
+  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123456)),
+  ('{"type": "long", "logicalType": "time-micros", "fsp" : 5}', datetime.time(2, 2, 1, 123450)),
+  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123000)),
+  ('{"type": "long", "logicalType": "timestamp-millis", "fsp" : 1}', datetime.datetime(2000, 1, 18, 2, 2, 1, 100000)),
+  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123456)),
+  ('{"type": "long", "logicalType": "timestamp-micros", "fsp" : 4}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123400)),
   ('{"type": "fixed", "logicalType": "decimal", "name": "Test", "size": 8, "precision": 5, "scale": 4}',
    Decimal('3.1415')),
   ('{"type": "fixed", "logicalType": "decimal", "name": "Test", "size": 8, "precision": 5, "scale": 4}',
