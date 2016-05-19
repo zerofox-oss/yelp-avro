@@ -35,6 +35,7 @@ A schema may be one of:
 """
 from math import floor
 from math import log10
+from avro import constants
 
 try:
   import json
@@ -325,18 +326,8 @@ class LogicalSchema(object):
 
 # Base class for time related logical types
 class _TimeSchema(LogicalSchema):
-  def __init__(self, logical_type, fsp):
-    max_fsp = self.max_fsp()
-    if not isinstance(fsp, int):
-      raise SchemaParseException('Fsp (Integer) is required for logical type %s.' % logical_type)
-
-    if fsp > max_fsp:
-      raise SchemaParseException('logicalType %s supports only fsp <= %d' % (logical_type, max_fsp))
-
+  def __init__(self, logical_type):
     LogicalSchema.__init__(self, logical_type)
-
-  def max_fsp(self):
-    raise NotImplementedError()
 
 #
 # Decimal logical schema
@@ -360,7 +351,7 @@ class DecimalLogicalSchema(LogicalSchema):
       raise SchemaParseException("Invalid DECIMAL scale %s. Cannot be greater than precision %s"
                                  %(scale, precision))
 
-    LogicalSchema.__init__(self, 'decimal')
+    LogicalSchema.__init__(self, constants.DECIMAL)
 
   def _max_precision(self):
     raise NotImplementedError()
@@ -464,7 +455,7 @@ class PrimitiveSchema(Schema):
 
 class DateSchema(LogicalSchema, PrimitiveSchema, ):
   def __init__(self, other_props=None):
-    LogicalSchema.__init__(self, 'date')
+    LogicalSchema.__init__(self, constants.DATE)
     PrimitiveSchema.__init__(self, 'int', other_props)
 
   def to_json(self):
@@ -478,76 +469,60 @@ class DateSchema(LogicalSchema, PrimitiveSchema, ):
 #
 
 class TimeMillisSchema(PrimitiveSchema, _TimeSchema):
-  def __init__(self, fsp, other_props=None):
-    _TimeSchema.__init__(self, 'time-millis', fsp)
+  def __init__(self, other_props=None):
+    _TimeSchema.__init__(self, constants.TIME_MILLIS)
     PrimitiveSchema.__init__(self, 'int', other_props)
-    self.set_prop('fsp', fsp)
 
   def to_json(self):
     return self.props
 
   def __eq__(self, that):
     return self.props == that.props
-
-  def max_fsp(self):
-    return 3
 
 #
 # time-micros Type
 #
 
 class TimeMicrosSchema(PrimitiveSchema, _TimeSchema):
-  def __init__(self, fsp, other_props=None):
-    _TimeSchema.__init__(self, 'time-micros', fsp)
+  def __init__(self, other_props=None):
+    _TimeSchema.__init__(self, constants.TIME_MICROS)
     PrimitiveSchema.__init__(self, 'long', other_props)
-    self.set_prop('fsp', fsp)
 
   def to_json(self):
     return self.props
 
   def __eq__(self, that):
     return self.props == that.props
-
-  def max_fsp(self):
-    return 6
 
 #
 # timestamp-millis Type
 #
 
 class TimestampMillisSchema(PrimitiveSchema, _TimeSchema):
-  def __init__(self, fsp, other_props=None):
-    _TimeSchema.__init__(self, 'timestamp-millis', fsp)
+  def __init__(self, other_props=None):
+    _TimeSchema.__init__(self, constants.TIMESTAMP_MILLIS)
     PrimitiveSchema.__init__(self, 'long', other_props)
-    self.set_prop('fsp', fsp)
 
   def to_json(self):
     return self.props
 
   def __eq__(self, that):
     return self.props == that.props
-
-  def max_fsp(self):
-    return 3
 
 #
 # timestamp-micros Type
 #
 
 class TimestampMicrosSchema(PrimitiveSchema, _TimeSchema):
-  def __init__(self, fsp, other_props=None):
-    _TimeSchema.__init__(self, 'timestamp-micros', fsp)
+  def __init__(self, other_props=None):
+    _TimeSchema.__init__(self, constants.TIMESTAMP_MICROS)
     PrimitiveSchema.__init__(self, 'long', other_props)
-    self.set_prop('fsp', fsp)
 
   def to_json(self):
     return self.props
 
   def __eq__(self, that):
     return self.props == that.props
-
-  def max_fsp(self):
-    return 6
 
 #
 # Decimal Bytes Type
@@ -921,32 +896,28 @@ def make_avsc_object(json_data, names=None):
     logical_type = None
     if 'logicalType' in json_data:
       logical_type = json_data.get('logicalType')
-      if logical_type not in ['date', 'time-millis', 'time-micros', 'timestamp-millis', 'timestamp-micros', 'decimal']:
+      if logical_type not in [constants.DATE, constants.TIME_MILLIS, constants.TIME_MICROS, constants.TIMESTAMP_MILLIS, constants.TIMESTAMP_MICROS, constants.DECIMAL]:
        raise SchemaParseException("Currently does not support %s logical type" % logical_type)
     if type in PRIMITIVE_TYPES:
-      if type == 'int' and logical_type == 'date':
+      if type == 'int' and logical_type == constants.DATE:
         return DateSchema(other_props)
-      elif type == 'int' and logical_type == 'time-millis':
+      elif type == 'int' and logical_type == constants.TIME_MILLIS:
         return TimeMillisSchema(
-          fsp=json_data.get('fsp', 3),
           other_props=other_props
         )
-      elif type == 'long' and logical_type == 'time-micros':
+      elif type == 'long' and logical_type == constants.TIME_MICROS:
         return TimeMicrosSchema(
-          fsp=json_data.get('fsp', 6),
           other_props=other_props
         )
-      elif type == 'long' and logical_type == 'timestamp-millis':
+      elif type == 'long' and logical_type == constants.TIMESTAMP_MILLIS:
         return TimestampMillisSchema(
-          fsp=json_data.get('fsp', 3),
           other_props=other_props
         )
-      elif type == 'long' and logical_type == 'timestamp-micros':
+      elif type == 'long' and logical_type == constants.TIMESTAMP_MICROS:
         return TimestampMicrosSchema(
-          fsp=json_data.get('fsp', 6),
           other_props=other_props
         )
-      elif type == 'bytes' and logical_type == 'decimal':
+      elif type == 'bytes' and logical_type == constants.DECIMAL:
         precision = json_data.get('precision')
         scale = 0 if json_data.get('scale') is None else json_data.get('scale')
         return BytesDecimalSchema(precision, scale, other_props)
@@ -956,7 +927,7 @@ def make_avsc_object(json_data, names=None):
       namespace = json_data.get('namespace', names.default_namespace)
       if type == 'fixed':
         size = json_data.get('size')
-        if logical_type == 'decimal':
+        if logical_type == constants.DECIMAL:
           precision = json_data.get('precision')
           scale = 0 if json_data.get('scale') is None else json_data.get('scale')
           return FixedDecimalSchema(size, name, precision, scale, namespace, names, other_props)

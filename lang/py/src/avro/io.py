@@ -38,6 +38,7 @@ uses the following mapping:
 """
 import struct
 from avro import schema
+from avro import constants
 import sys
 from binascii import crc32
 
@@ -116,38 +117,32 @@ def validate(expected_schema, datum):
     return isinstance(datum, basestring)
   elif schema_type == 'bytes':
     if (hasattr(expected_schema, 'logical_type') and
-            expected_schema.logical_type == 'decimal'):
+            expected_schema.logical_type == constants.DECIMAL):
       return isinstance(datum, Decimal)
     return isinstance(datum, str)
   elif schema_type == 'int':
     if hasattr(expected_schema, 'logical_type'):
-      if expected_schema.logical_type == 'date':
+      if expected_schema.logical_type == constants.DATE:
         return isinstance(datum, datetime.date)
-      elif expected_schema.logical_type == 'time-millis':
+      elif expected_schema.logical_type == constants.TIME_MILLIS:
         return isinstance(datum, datetime.time)
-      else:
-        return False
-    else:
-      return ((isinstance(datum, int) or isinstance(datum, long))
-              and INT_MIN_VALUE <= datum <= INT_MAX_VALUE)
+    return ((isinstance(datum, int) or isinstance(datum, long))
+            and INT_MIN_VALUE <= datum <= INT_MAX_VALUE)
   elif schema_type == 'long':
     if hasattr(expected_schema, 'logical_type'):
-      if expected_schema.logical_type == 'time-micros':
+      if expected_schema.logical_type == constants.TIME_MICROS:
         return isinstance(datum, datetime.time)
-      elif expected_schema.logical_type in ['timestamp-millis', 'timestamp-micros']:
+      elif expected_schema.logical_type in [constants.TIMESTAMP_MILLIS, constants.TIMESTAMP_MICROS]:
         return isinstance(datum, datetime.datetime)
-      else:
-        return False
-    else:
-      return ((isinstance(datum, int) or isinstance(datum, long)) 
-              and LONG_MIN_VALUE <= datum <= LONG_MAX_VALUE)
+    return ((isinstance(datum, int) or isinstance(datum, long)) 
+            and LONG_MIN_VALUE <= datum <= LONG_MAX_VALUE)
   elif schema_type in ['float', 'double']:
     return (isinstance(datum, int) or isinstance(datum, long)
             or isinstance(datum, float))
   # Check for int, float, long and decimal
   elif schema_type == 'fixed':
     if (hasattr(expected_schema, 'logical_type') and
-                    expected_schema.logical_type == 'decimal'):
+                    expected_schema.logical_type == constants.DECIMAL):
       return isinstance(datum, Decimal)
     return isinstance(datum, str) and len(datum) == expected_schema.size
   elif schema_type == 'enum':
@@ -306,66 +301,48 @@ class BinaryDecoder(object):
     days_since_epoc = self.read_int()
     return datetime.date(1970, 1, 1) + datetime.timedelta(days_since_epoc)
 
-  def read_time_millis_from_int(self):
-    """
-    Decode python time object from int
-    int stores the number of milliseconds after midnight, 00:00:00.000
-    """
-    milisec = self.read_int()
-    hrs = int(milisec / 3600000)
-    milisec = milisec % 3600000
+  def _build_time_object(self, value, unit_multiplier):
+    value = int(value * (1000000 // unit_multiplier))
+    value, microseconds =  value // 1000000, value % 1000000
+    value, seconds = value // 60, value % 60
+    value, minutes = value // 60, value % 60
+    hours = value
 
-    minutes = int(milisec / 60000)
-    milisec = milisec % 60000
-
-    seconds = int(milisec / 1000)
-    milisec = milisec % 1000
-
-    microseconds = milisec * 1000
     return datetime.time(
-      hour=hrs,
+      hour=hours,
       minute=minutes,
       second=seconds,
       microsecond=microseconds
     )
+
+  def read_time_millis_from_int(self):
+    """
+    Python Time object is encoded as a int integer which represents 
+    the number of milliseconds after midnight, 00:00:00.000000.
+    """
+    milisec = self.read_int()
+    return self._build_time_object(milisec, 1000)
 
   def read_time_micros_from_long(self):
     """
-    Decode python time object from long
-    long stores the number of microseconds after midnight, 00:00:00.000000
+    Python Time object is encoded as a int integer which represents 
+    the number of microseconds after midnight, 00:00:00.000000.
     """
     microsec = self.read_long()
-    hrs = long(microsec / 3600000000)
-    microsec = microsec % 3600000000
+    return self._build_time_object(microsec, 1000000)
 
-    minutes = long(microsec / 60000000)
-    microsec = microsec % 60000000
-
-    seconds = long(microsec / 1000000)
-    microsec = microsec % 1000000
-
-    microseconds = microsec
-    return datetime.time(
-      hour=hrs,
-      minute=minutes,
-      second=seconds,
-      microsecond=microseconds
-    )
-
-  def read_ts_millis_from_long(self):
+  def read_timestamp_millis_from_long(self):
     """
-    Decode python datetime   object from long
-    long stores the number of milliseconds from 
-    the unix epoch, 1 January 1970 00:00:00.000 UTC.
+    Python DateTime object is encoded as a long integer which represents 
+    the number of milliseconds from the unix epoch, 1 January 1970.
     """
     ts = self.read_long()
     return datetime.datetime.utcfromtimestamp(ts / 1000.0)
 
-  def read_ts_micros_from_long(self):
+  def read_timestamp_micros_from_long(self):
     """
-    Decode python datetime   object from long
-    long stores the number of milliseconds from 
-    the unix epoch, 1 January 1970 00:00:00.000 UTC.
+    Python DateTime object is encoded as a long integer which represents 
+    the number of microseconds from the unix epoch, 1 January 1970.
     """
     ts = self.read_long()
     return datetime.datetime.utcfromtimestamp(ts / 1000000.0)
@@ -567,8 +544,8 @@ class BinaryEncoder(object):
 
   def write_date_int(self, datum):
     """
-    Encode python date object as int
-    int stores the number of days from
+    Encode python date object as int.
+    It stores the number of days from
     the unix epoch, 1 January 1970 (ISO calendar).
     """
     delta_date = datum - datetime.date(1970, 1, 1)
@@ -576,35 +553,35 @@ class BinaryEncoder(object):
 
   def write_time_millis_int(self, datum):
     """
-    Encode python time object as int
-    int stores the number of milliseconds from midnight, 00:00:00.000
+    Encode python time object as int.
+    It stores the number of milliseconds from midnight, 00:00:00.000
     """
-    delta_time = datum.hour*3600000 + datum.minute * 60000 + datum.second * 1000 + datum.microsecond / 1000
-    self.write_int(int(delta_time))
+    offset_milliseconds = datum.hour*3600000 + datum.minute * 60000 + datum.second * 1000 + datum.microsecond // 1000
+    self.write_int(offset_milliseconds)
 
   def write_time_micros_long(self, datum):
     """
-    Encode python time object as long
-    long stores the number of microseconds from midnight, 00:00:00.000000
+    Encode python time object as long.
+    It stores the number of microseconds from midnight, 00:00:00.000000
     """
-    delta_time = datum.hour*3600000000 + datum.minute * 60000000 + datum.second * 1000000 + datum.microsecond
-    self.write_long(long(delta_time))
+    offset_microseconds = datum.hour*3600000000 + datum.minute * 60000000 + datum.second * 1000000 + datum.microsecond
+    self.write_long(offset_microseconds)
 
-  def write_ts_millis_long(self, datum):
+  def write_timestamp_millis_long(self, datum):
     """
-    Encode python time object as int
-    int stores the number of milliseconds from midnight, 00:00:00.000
+    Encode python time object as int.
+    It stores the number of milliseconds from midnight of unix epoch, 1 January 1970.
     """
-    delta_time = (datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds() * 1000;
-    self.write_long(long(delta_time))
+    offset_milliseconds = (datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds() * 1000;
+    self.write_long(long(offset_milliseconds))
 
-  def write_ts_micros_long(self, datum):
+  def write_timestamp_micros_long(self, datum):
     """
-    Encode python time object as int
-    int stores the number of milliseconds from midnight, 00:00:00.000
+    Encode python time object as int.
+    It stores the number of microseconds from midnight of unix epoch, 1 January 1970.
     """
-    delta_time = (datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds() * 1000000;
-    self.write_long(long(delta_time))
+    offset_microseconds = (datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds() * 1000000;
+    self.write_long(long(offset_microseconds))
 
 #
 # DatumReader/Writer
@@ -712,9 +689,9 @@ class DatumReader(object):
       return decoder.read_utf8()
     elif writers_schema.type == 'int':
       if hasattr(writers_schema, 'logical_type'):
-        if writers_schema.logical_type == 'date':
+        if writers_schema.logical_type == constants.DATE:
           return decoder.read_date_from_int()
-        elif writers_schema.logical_type == 'time-millis':
+        elif writers_schema.logical_type == constants.TIME_MILLIS:
           return decoder.read_time_millis_from_int()
         else:
           fail_msg = "Cannot read unknown schema type: %s logicalType %s" % (writers_schema.type, writers_schema.logical_type)
@@ -723,12 +700,12 @@ class DatumReader(object):
         return decoder.read_int()
     elif writers_schema.type == 'long':
       if hasattr(writers_schema, 'logical_type'):
-        if writers_schema.logical_type == 'time-micros':
+        if writers_schema.logical_type == constants.TIME_MICROS:
           return decoder.read_time_micros_from_long()
-        elif writers_schema.logical_type == 'timestamp-millis':
-          return decoder.read_ts_millis_from_long()
-        elif writers_schema.logical_type == 'timestamp-micros':
-          return decoder.read_ts_micros_from_long()
+        elif writers_schema.logical_type == constants.TIMESTAMP_MILLIS:
+          return decoder.read_timestamp_millis_from_long()
+        elif writers_schema.logical_type == constants.TIMESTAMP_MICROS:
+          return decoder.read_timestamp_micros_from_long()
         else:
           fail_msg = "Cannot read unknown schema type: %s logicalType %s" % (writers_schema.type, writers_schema.logical_type)
           raise schema.AvroException(fail_msg)
@@ -740,7 +717,7 @@ class DatumReader(object):
       return decoder.read_double()
     elif writers_schema.type == 'bytes':
       if (hasattr(writers_schema, 'logical_type') and
-                      writers_schema.logical_type == 'decimal'):
+                      writers_schema.logical_type == constants.DECIMAL):
         return decoder.read_decimal_from_bytes(
           writers_schema.get_prop('precision'),
           writers_schema.get_prop('scale')
@@ -749,7 +726,7 @@ class DatumReader(object):
         return decoder.read_bytes()
     elif writers_schema.type == 'fixed':
       if (hasattr(writers_schema, 'logical_type') and
-                      writers_schema.logical_type == 'decimal'):
+                      writers_schema.logical_type == constants.DECIMAL):
         return decoder.read_decimal_from_fixed(
           writers_schema.get_prop('precision'),
           writers_schema.get_prop('scale'),
@@ -1058,9 +1035,9 @@ class DatumWriter(object):
       encoder.write_utf8(datum)
     elif writers_schema.type == 'int':
       if hasattr(writers_schema, 'logical_type'):
-        if writers_schema.logical_type == 'date':
+        if writers_schema.logical_type == constants.DATE:
           encoder.write_date_int(datum)
-        elif writers_schema.logical_type == 'time-millis':
+        elif writers_schema.logical_type == constants.TIME_MILLIS:
           encoder.write_time_millis_int(datum)
         else:
           fail_msg = 'Unknown type: %s, logicalType %s' % (writers_schema.type, writers_schema.logical_type)
@@ -1069,12 +1046,12 @@ class DatumWriter(object):
         encoder.write_int(datum)
     elif writers_schema.type == 'long':
       if hasattr(writers_schema, 'logical_type'):
-        if writers_schema.logical_type == 'time-micros':
+        if writers_schema.logical_type == constants.TIME_MICROS:
           encoder.write_time_micros_long(datum)
-        elif writers_schema.logical_type == 'timestamp-millis':
-          encoder.write_ts_millis_long(datum)
-        elif writers_schema.logical_type == 'timestamp-micros':
-          encoder.write_ts_micros_long(datum)
+        elif writers_schema.logical_type == constants.TIMESTAMP_MILLIS:
+          encoder.write_timestamp_millis_long(datum)
+        elif writers_schema.logical_type == constants.TIMESTAMP_MICROS:
+          encoder.write_timestamp_micros_long(datum)
         else:
           fail_msg = 'Unknown type: %s, logicalType %s' % (writers_schema.type, writers_schema.logical_type)
           raise schema.AvroException(fail_msg)
@@ -1086,13 +1063,13 @@ class DatumWriter(object):
       encoder.write_double(datum)
     elif writers_schema.type == 'bytes':
       if (hasattr(writers_schema, 'logical_type') and
-                      writers_schema.logical_type == 'decimal'):
+                      writers_schema.logical_type == constants.DECIMAL):
         encoder.write_decimal_bytes(datum, writers_schema.get_prop('scale'))
       else:
         encoder.write_bytes(datum)
     elif writers_schema.type == 'fixed':
       if (hasattr(writers_schema, 'logical_type') and
-                      writers_schema.logical_type == 'decimal'):
+                      writers_schema.logical_type == constants.DECIMAL):
         encoder.write_decimal_fixed(
           datum,
           writers_schema.get_prop('scale'),

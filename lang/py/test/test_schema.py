@@ -331,18 +331,6 @@ TIMEMILLIS_LOGICAL_TYPE = [
   "logicalType": "time-millis"} """, True),
   ExampleSchema("""{
   "type": "int",
-  "logicalType": "time-millis",
-  "fsp": 3} """, True),
-  ExampleSchema("""{
-  "type": "int",
-  "logicalType": "time-millis",
-  "fsp": 4} """, False),
-  ExampleSchema("""{
-  "type": "int",
-  "logicalType": "time-millis",
-  "fsp": 1} """, True),
-  ExampleSchema("""{
-  "type": "int",
   "logicalType": "time-milis"} """, False),
   ExampleSchema("""{
   "type": "long",
@@ -353,14 +341,6 @@ TIMEMICROS_LOGICAL_TYPE = [
   ExampleSchema("""{
   "type": "long",
   "logicalType": "time-micros"} """, True),
-  ExampleSchema("""{
-  "type": "long",
-  "logicalType": "time-micros",
-  "fsp": 6} """, True),
-  ExampleSchema("""{
-  "type": "long",
-  "logicalType": "time-micros",
-  "fsp": 7} """, False),
   ExampleSchema("""{
   "type": "long",
   "logicalType": "time-micro"} """, False),
@@ -375,14 +355,6 @@ TIMESTAMPMILLIS_LOGICAL_TYPE = [
   "logicalType": "timestamp-millis"} """, True),
   ExampleSchema("""{
   "type": "long",
-  "logicalType": "timestamp-millis",
-  "fsp": 2} """, True),
-  ExampleSchema("""{
-  "type": "long",
-  "logicalType": "timestamp-millis",
-  "fsp": 4} """, False),
-  ExampleSchema("""{
-  "type": "long",
   "logicalType": "timestamp-milis"} """, False),
   ExampleSchema("""{
   "type": "int",
@@ -393,14 +365,6 @@ TIMESTAMPMICROS_LOGICAL_TYPE = [
   ExampleSchema("""{
   "type": "long",
   "logicalType": "timestamp-micros"} """, True),
-  ExampleSchema("""{
-  "type": "long",
-  "logicalType": "timestamp-micros",
-  "fsp": 4} """, True),
-  ExampleSchema("""{
-  "type": "long",
-  "logicalType": "timestamp-micros",
-  "fsp": 8} """, False),
   ExampleSchema("""{
   "type": "long",
   "logicalType": "timestamp-micro"} """, False),
