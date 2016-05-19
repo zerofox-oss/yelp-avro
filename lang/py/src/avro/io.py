@@ -567,12 +567,19 @@ class BinaryEncoder(object):
     offset_microseconds = datum.hour*3600000000 + datum.minute * 60000000 + datum.second * 1000000 + datum.microsecond
     self.write_long(offset_microseconds)
 
+  def _timedelta_total_seconds(self, timedelta):
+    # http://stackoverflow.com/a/28089673
+    return (
+        timedelta.microseconds + 0.0 +
+        (timedelta.seconds + timedelta.days * 24 * 3600) * 10 ** 6) / 10 ** 6
+
   def write_timestamp_millis_long(self, datum):
     """
     Encode python time object as int.
     It stores the number of milliseconds from midnight of unix epoch, 1 January 1970.
     """
-    offset_milliseconds = (datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds() * 1000;
+    timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)
+    offset_milliseconds = self._timedelta_total_seconds(timedelta) * 1000;
     self.write_long(long(offset_milliseconds))
 
   def write_timestamp_micros_long(self, datum):
@@ -580,7 +587,8 @@ class BinaryEncoder(object):
     Encode python time object as int.
     It stores the number of microseconds from midnight of unix epoch, 1 January 1970.
     """
-    offset_microseconds = (datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds() * 1000000;
+    timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0)
+    offset_microseconds = self._timedelta_total_seconds(timedelta) * 1000000;
     self.write_long(long(offset_microseconds))
 
 #
