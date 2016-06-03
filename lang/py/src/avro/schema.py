@@ -458,7 +458,7 @@ class DateSchema(LogicalSchema, PrimitiveSchema, ):
     LogicalSchema.__init__(self, constants.DATE)
     PrimitiveSchema.__init__(self, 'int', other_props)
 
-  def to_json(self):
+  def to_json(self, names=None):
     return self.props
 
   def __eq__(self, that):
@@ -473,7 +473,7 @@ class TimeMillisSchema(PrimitiveSchema, _TimeSchema):
     _TimeSchema.__init__(self, constants.TIME_MILLIS)
     PrimitiveSchema.__init__(self, 'int', other_props)
 
-  def to_json(self):
+  def to_json(self, names=None):
     return self.props
 
   def __eq__(self, that):
@@ -488,7 +488,7 @@ class TimeMicrosSchema(PrimitiveSchema, _TimeSchema):
     _TimeSchema.__init__(self, constants.TIME_MICROS)
     PrimitiveSchema.__init__(self, 'long', other_props)
 
-  def to_json(self):
+  def to_json(self, names=None):
     return self.props
 
   def __eq__(self, that):
@@ -503,7 +503,7 @@ class TimestampMillisSchema(PrimitiveSchema, _TimeSchema):
     _TimeSchema.__init__(self, constants.TIMESTAMP_MILLIS)
     PrimitiveSchema.__init__(self, 'long', other_props)
 
-  def to_json(self):
+  def to_json(self, names=None):
     return self.props
 
   def __eq__(self, that):
@@ -518,7 +518,7 @@ class TimestampMicrosSchema(PrimitiveSchema, _TimeSchema):
     _TimeSchema.__init__(self, constants.TIMESTAMP_MICROS)
     PrimitiveSchema.__init__(self, 'long', other_props)
 
-  def to_json(self):
+  def to_json(self, names=None):
     return self.props
 
   def __eq__(self, that):
