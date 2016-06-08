@@ -40,7 +40,7 @@ case "$target" in
 
     test)
 	# run lang-specific tests
-        (cd lang/java; mvn test)
+        (cd lang/java; mvn3 test)
 	(cd lang/py; ant test)
 	(cd lang/py3; python3 setup.py test)
 	(cd lang/c; ./build.sh test)
@@ -53,7 +53,7 @@ case "$target" in
 
 	# create interop test data
         mkdir -p build/interop/data
-	(cd lang/java/avro; mvn -P interop-data-generate generate-resources)
+	(cd lang/java/avro; mvn3 -P interop-data-generate generate-resources)
 	(cd lang/py; ant interop-data-generate)
 	(cd lang/c; ./build.sh interop-data-generate)
 	#(cd lang/c++; make interop-data-generate)
@@ -61,7 +61,7 @@ case "$target" in
 	(cd lang/php; ./build.sh interop-data-generate)
 
 	# run interop data tests
-	(cd lang/java; mvn test -P interop-data-test)
+	(cd lang/java; mvn3 test -P interop-data-test)
 	(cd lang/py; ant interop-data-test)
 	(cd lang/c; ./build.sh interop-data-test)
 	#(cd lang/c++; make interop-data-test)
@@ -69,7 +69,7 @@ case "$target" in
 	(cd lang/php; ./build.sh test-interop)
 
 	# java needs to package the jars for the interop rpc tests
-        (cd lang/java; mvn package -DskipTests)
+        (cd lang/java; mvn3 package -DskipTests)
 	# run interop rpc test
         /bin/bash share/test/interop/bin/test_rpc_interop.sh
 
@@ -78,7 +78,7 @@ case "$target" in
     dist)
         # ensure version matches
         # FIXME: enforcer is broken:MENFORCER-42
-        # mvn enforcer:enforce -Davro.version=$VERSION
+        # mvn3 enforcer:enforce -Davro.version=$VERSION
         
 	# build source tarball
         mkdir -p build
@@ -90,19 +90,19 @@ case "$target" in
 	svn export --force . build/${SRC_DIR}
 
 	#runs RAT on artifacts
-        mvn -N -P rat antrun:run
+        mvn3 -N -P rat antrun:run
 
 	mkdir -p dist
         (cd build; tar czf ../dist/${SRC_DIR}.tar.gz ${SRC_DIR})
 
 	# build lang-specific artifacts
         
-	(cd lang/java; mvn package -DskipTests -Dhadoop.version=1;
+	(cd lang/java; mvn3 package -DskipTests -Dhadoop.version=1;
 	  rm -rf mapred/target/{classes,test-classes}/;
 	  rm -rf trevni/avro/target/{classes,test-classes}/;
-	  mvn -P dist package -DskipTests -Davro.version=$VERSION javadoc:aggregate)
-        (cd lang/java/trevni/doc; mvn site)
-        (mvn -N -P copy-artifacts antrun:run) 
+	  mvn3 -P dist package -DskipTests -Davro.version=$VERSION javadoc:aggregate)
+        (cd lang/java/trevni/doc; mvn3 site)
+        (mvn3 -N -P copy-artifacts antrun:run) 
 
 	(cd lang/py; ant dist)
 	(cd lang/py3; python3 setup.py sdist; cp -r dist ../../dist/py3)
@@ -159,7 +159,7 @@ case "$target" in
 	rm -rf build dist
 	(cd doc; ant clean)
 
-        (mvn clean)         
+        (mvn3 clean)         
 
 	(cd lang/py; ant clean)
 	(cd lang/py3; python3 setup.py clean)
@@ -210,7 +210,7 @@ UserSpecificDocker
         ;;
 
     rat)
-        mvn test -Dmaven.main.skip=true -Dmaven.test.skip=true -DskipTests=true -P rat -pl :avro-toplevel
+        mvn3 test -Dmaven.main.skip=true -Dmaven.test.skip=true -DskipTests=true -P rat -pl :avro-toplevel
         ;;
 
     *)
