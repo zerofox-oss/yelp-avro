@@ -42,31 +42,15 @@ case "$target" in
 	# run lang-specific tests
         (cd lang/java; mvn3 test)
 	(cd lang/py; ant test)
-	(cd lang/py3; python3 setup.py test)
-	(cd lang/c; ./build.sh test)
-	(cd lang/c++; ./build.sh test)
-	(cd lang/csharp; ./build.sh test)
-	(cd lang/js; ./build.sh test)
-	(cd lang/ruby; ./build.sh test)
-	(cd lang/php; ./build.sh test)
-	(cd lang/perl; perl ./Makefile.PL && make test)
 
 	# create interop test data
         mkdir -p build/interop/data
 	(cd lang/java/avro; mvn3 -P interop-data-generate generate-resources)
 	(cd lang/py; ant interop-data-generate)
-	(cd lang/c; ./build.sh interop-data-generate)
-	#(cd lang/c++; make interop-data-generate)
-	(cd lang/ruby; rake generate_interop)
-	(cd lang/php; ./build.sh interop-data-generate)
 
 	# run interop data tests
 	(cd lang/java; mvn3 test -P interop-data-test)
 	(cd lang/py; ant interop-data-test)
-	(cd lang/c; ./build.sh interop-data-test)
-	#(cd lang/c++; make interop-data-test)
-	(cd lang/ruby; rake interop)
-	(cd lang/php; ./build.sh test-interop)
 
 	# java needs to package the jars for the interop rpc tests
         (cd lang/java; mvn3 package -DskipTests)
@@ -105,23 +89,6 @@ case "$target" in
         (mvn3 -N -P copy-artifacts antrun:run) 
 
 	(cd lang/py; ant dist)
-	(cd lang/py3; python3 setup.py sdist; cp -r dist ../../dist/py3)
-
-	(cd lang/c; ./build.sh dist)
-
-	(cd lang/c++; ./build.sh dist)
-
-	(cd lang/csharp; ./build.sh dist)
-
-	(cd lang/js; ./build.sh dist)
-
-	(cd lang/ruby; ./build.sh dist)
-
-	(cd lang/php; ./build.sh dist)
-
-        mkdir -p dist/perl
-	(cd lang/perl; perl ./Makefile.PL && make dist)
-        cp lang/perl/Avro-$VERSION.tar.gz dist/perl/
 
 	# build docs
 	(cd doc; ant)
@@ -162,21 +129,6 @@ case "$target" in
         (mvn3 clean)         
 
 	(cd lang/py; ant clean)
-	(cd lang/py3; python3 setup.py clean)
-
-	(cd lang/c; ./build.sh clean)
-
-	(cd lang/c++; ./build.sh clean)
-
-	(cd lang/csharp; ./build.sh clean)
-
-	(cd lang/js; ./build.sh clean)
-
-	(cd lang/ruby; ./build.sh clean)
-
-	(cd lang/php; ./build.sh clean)
-
-	(cd lang/perl; [ ! -f Makefile ] || make clean)
 	;;
 
     docker)
