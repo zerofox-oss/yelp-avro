@@ -35,12 +35,13 @@ A schema may be one of:
 """
 from math import floor
 from math import log10
-from avro import constants
 
 try:
   import json
 except ImportError:
   import simplejson as json
+
+from avro import constants
 
 #
 # Constants

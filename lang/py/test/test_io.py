@@ -14,17 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-
 from decimal import Decimal
 import datetime
+from binascii import hexlify
 
 try:
   from cStringIO import StringIO
 except ImportError:
   from StringIO import StringIO
-from binascii import hexlify
-
 import set_avro_test_path
+import pytz
 
 from avro import schema
 from avro import io
@@ -40,14 +39,14 @@ SCHEMAS_TO_VALIDATE = (
   ('"double"', 1234.0),
   ('{"type": "fixed", "name": "Test", "size": 1}', 'B'),
   ('{"type": "int", "logicalType": "date"}', datetime.date(2000, 1, 1)),
-  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 123000)),
-  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 120000)),
-  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123456)),
-  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123450)),
-  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123000)),
-  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 100000)),
-  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123456)),
-  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123400)),
+  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 123000, tzinfo=pytz.utc)),
+  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 120000, tzinfo=pytz.utc)),
+  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123456, tzinfo=pytz.utc)),
+  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123450, tzinfo=pytz.utc)),
+  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123000, tzinfo=pytz.utc)),
+  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 100000, tzinfo=pytz.utc)),
+  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123456, tzinfo=pytz.utc)),
+  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123400, tzinfo=pytz.utc)),
   ('{"type": "fixed", "logicalType": "decimal", "name": "Test", "size": 8, "precision": 5, "scale": 4}',
    Decimal('3.1415')),
   ('{"type": "fixed", "logicalType": "decimal", "name": "Test", "size": 8, "precision": 5, "scale": 4}',

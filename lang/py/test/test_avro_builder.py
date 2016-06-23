@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import unittest2 as unittest
+import unittest
 
 from avro import avro_builder
 from avro import schema

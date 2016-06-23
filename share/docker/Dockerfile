@@ -59,3 +59,7 @@ RUN gem install echoe yajl-ruby multi_json snappy
 
 # Install global Node modules
 RUN npm install -g grunt-cli
+
+# install dependancies for
+RUN apt-get update && apt-get install --no-install-recommends -y python-pip 
+RUN pip install pytz
