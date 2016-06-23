@@ -14,17 +14,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unittest
-
 from decimal import Decimal
 import datetime
+from binascii import hexlify
 
 try:
   from cStringIO import StringIO
 except ImportError:
   from StringIO import StringIO
-from binascii import hexlify
-
 import set_avro_test_path
+import pytz
 
 from avro import schema
 from avro import io
@@ -40,14 +39,34 @@ SCHEMAS_TO_VALIDATE = (
   ('"double"', 1234.0),
   ('{"type": "fixed", "name": "Test", "size": 1}', 'B'),
   ('{"type": "int", "logicalType": "date"}', datetime.date(2000, 1, 1)),
-  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 123000)),
-  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(2, 2, 1, 120000)),
-  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123456)),
-  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(2, 2, 1, 123450)),
-  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123000)),
-  ('{"type": "long", "logicalType": "timestamp-millis"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 100000)),
-  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123456)),
-  ('{"type": "long", "logicalType": "timestamp-micros"}', datetime.datetime(2000, 1, 18, 2, 2, 1, 123400)),
+  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(23, 59, 59, 999000)),
+  ('{"type": "int", "logicalType": "time-millis"}', datetime.time(0, 0, 0, 000000)),
+  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(23, 59, 59, 999999)),
+  ('{"type": "long", "logicalType": "time-micros"}', datetime.time(0, 0, 0, 000000)),
+  (
+    '{"type": "long", "logicalType": "timestamp-millis"}',
+    datetime.datetime(1000, 1, 1, 0, 0, 0, 000000, tzinfo=pytz.utc)
+  ),
+  (
+    '{"type": "long", "logicalType": "timestamp-millis"}',
+    datetime.datetime(9999, 12, 31, 23, 59, 59, 999000, tzinfo=pytz.utc)
+  ),
+  (
+    '{"type": "long", "logicalType": "timestamp-millis"}',
+    datetime.datetime(2000, 1, 18, 2, 2, 1, 100000, tzinfo=pytz.timezone('Europe/Moscow'))
+  ),
+  (
+    '{"type": "long", "logicalType": "timestamp-micros"}',
+    datetime.datetime(1000, 1, 1, 0, 0, 0, 000000, tzinfo=pytz.utc)
+  ),
+  (
+    '{"type": "long", "logicalType": "timestamp-micros"}',
+    datetime.datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=pytz.utc)
+  ),
+  (
+    '{"type": "long", "logicalType": "timestamp-micros"}',
+    datetime.datetime(2000, 1, 18, 2, 2, 1, 123499, tzinfo=pytz.timezone('Europe/Moscow'))
+  ),
   ('{"type": "fixed", "logicalType": "decimal", "name": "Test", "size": 8, "precision": 5, "scale": 4}',
    Decimal('3.1415')),
   ('{"type": "fixed", "logicalType": "decimal", "name": "Test", "size": 8, "precision": 5, "scale": 4}',
@@ -221,6 +240,8 @@ class TestIO(unittest.TestCase):
       if isinstance(round_trip_datum, Decimal):
         round_trip_datum = round_trip_datum.to_eng_string()
         datum = str(datum)
+      if isinstance(round_trip_datum, datetime.datetime):
+        datum = datum.astimezone(tz=pytz.utc)
       if datum == round_trip_datum: correct += 1
     self.assertEquals(correct, len(SCHEMAS_TO_VALIDATE))
 
