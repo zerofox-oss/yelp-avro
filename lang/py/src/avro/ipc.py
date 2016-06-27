@@ -30,13 +30,48 @@ from avro import schema
 #
 
 # Handshake schema is pulled in during build
-HANDSHAKE_REQUEST_SCHEMA = schema.parse("""
-@HANDSHAKE_REQUEST_SCHEMA@
-""")
+#HANDSHAKE_REQUEST_SCHEMA = schema.parse("""
+#@HANDSHAKE_REQUEST_SCHEMA@
+#""")
+#
+#HANDSHAKE_RESPONSE_SCHEMA = schema.parse("""
+#@HANDSHAKE_RESPONSE_SCHEMA@
+#""")
 
-HANDSHAKE_RESPONSE_SCHEMA = schema.parse("""
-@HANDSHAKE_RESPONSE_SCHEMA@
-""")
+request_schema = """
+{
+    "type": "record",
+    "name": "HandshakeRequest", "namespace":"org.apache.avro.ipc",
+    "fields": [
+        {"name": "clientHash",
+     "type": {"type": "fixed", "name": "MD5", "size": 16}},
+        {"name": "clientProtocol", "type": ["null", "string"]},
+        {"name": "serverHash", "type": "MD5"},
+    {"name": "meta", "type": ["null", {"type": "map", "values": "bytes"}]}
+ ]
+}
+"""
+
+response_schema = """
+{
+    "type": "record",
+    "name": "HandshakeResponse", "namespace": "org.apache.avro.ipc",
+    "fields": [
+        {"name": "match",
+         "type": {"type": "enum", "name": "HandshakeMatch",
+                  "symbols": ["BOTH", "CLIENT", "NONE"]}},
+        {"name": "serverProtocol",
+         "type": ["null", "string"]},
+        {"name": "serverHash",
+         "type": ["null", {"type": "fixed", "name": "MD5", "size": 16}]},
+    {"name": "meta",
+         "type": ["null", {"type": "map", "values": "bytes"}]}
+    ]
+}
+"""
+
+HANDSHAKE_REQUEST_SCHEMA = schema.parse(request_schema)
+HANDSHAKE_RESPONSE_SCHEMA = schema.parse(response_schema)
 
 HANDSHAKE_REQUESTOR_WRITER = io.DatumWriter(HANDSHAKE_REQUEST_SCHEMA)
 HANDSHAKE_REQUESTOR_READER = io.DatumReader(HANDSHAKE_RESPONSE_SCHEMA)
