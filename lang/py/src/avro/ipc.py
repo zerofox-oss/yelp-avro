@@ -5,9 +5,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -30,13 +30,42 @@ from avro import schema
 #
 
 # Handshake schema is pulled in during build
-HANDSHAKE_REQUEST_SCHEMA = schema.parse("""
-@HANDSHAKE_REQUEST_SCHEMA@
-""")
 
-HANDSHAKE_RESPONSE_SCHEMA = schema.parse("""
-@HANDSHAKE_RESPONSE_SCHEMA@
-""")
+
+request_schema = """
+{
+    "type": "record",
+    "name": "HandshakeRequest", "namespace":"org.apache.avro.ipc",
+    "fields": [
+        {"name": "clientHash",
+     "type": {"type": "fixed", "name": "MD5", "size": 16}},
+        {"name": "clientProtocol", "type": ["null", "string"]},
+        {"name": "serverHash", "type": "MD5"},
+    {"name": "meta", "type": ["null", {"type": "map", "values": "bytes"}]}
+ ]
+}
+"""
+
+response_schema = """
+{
+    "type": "record",
+    "name": "HandshakeResponse", "namespace": "org.apache.avro.ipc",
+    "fields": [
+        {"name": "match",
+         "type": {"type": "enum", "name": "HandshakeMatch",
+                  "symbols": ["BOTH", "CLIENT", "NONE"]}},
+        {"name": "serverProtocol",
+         "type": ["null", "string"]},
+        {"name": "serverHash",
+         "type": ["null", {"type": "fixed", "name": "MD5", "size": 16}]},
+    {"name": "meta",
+         "type": ["null", {"type": "map", "values": "bytes"}]}
+    ]
+}
+"""
+
+HANDSHAKE_REQUEST_SCHEMA = schema.parse(request_schema)
+HANDSHAKE_RESPONSE_SCHEMA = schema.parse(response_schema)
 
 HANDSHAKE_REQUESTOR_WRITER = io.DatumWriter(HANDSHAKE_REQUEST_SCHEMA)
 HANDSHAKE_REQUESTOR_READER = io.DatumReader(HANDSHAKE_RESPONSE_SCHEMA)
@@ -189,7 +218,7 @@ class BaseRequestor(object):
       * a one-byte error flag boolean, followed by either:
         o if the error flag is false,
           the message response, serialized per the message's response schema.
-        o if the error flag is true, 
+        o if the error flag is true,
           the error, serialized per the message's error union schema.
     """
     # response metadata
@@ -267,11 +296,11 @@ class Responder(object):
     buffer_encoder = io.BinaryEncoder(buffer_writer)
     error = None
     response_metadata = {}
-    
+
     try:
       remote_protocol = self.process_handshake(buffer_decoder, buffer_encoder)
       # handshake failure
-      if remote_protocol is None:  
+      if remote_protocol is None:
         return buffer_writer.getvalue()
 
       # read request using remote protocol
