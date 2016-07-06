@@ -14,5 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['schema', 'io', 'datafile', 'protocol', 'ipc', 'constants']
+"""
+Contains Constants for Python Avro
+"""
 
+DECIMAL = "decimal"
+DATE = "date"
+TIME_MILLIS = "time-millis"
+TIME_MICROS = "time-micros"
+TIMESTAMP_MILLIS = "timestamp-millis"
+TIMESTAMP_MICROS = "timestamp-micros"
+
+SUPPORTED_LOGICAL_TYPE = [
+  DECIMAL,
+  DATE,
+  TIME_MILLIS,
+  TIME_MICROS,
+  TIMESTAMP_MILLIS,
+  TIMESTAMP_MICROS
+]
