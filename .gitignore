@@ -11,3 +11,6 @@ target
 /build
 test-output
 /dist
+lang/py/lib/ivy*.jar
+lang/py/build/
+lang/py/src/avro.egg-info/
