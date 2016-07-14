@@ -1,0 +1,59 @@
+name: avro
+
+plugins:
+    # Utility plugins
+    DynamoDB:
+        dynamo_region: us-west-2
+        boto_auth_file: /etc/boto_cfg/scarab.cfg
+    YelpTransport: {}
+    # Event plugins
+    GitPush: {}
+    CleanDist: {}
+    RecordPypiUpload: {}
+    CleanupVenv: {}
+    IncrementLocalVersion:
+        version_file: share/VERSION.txt
+        version_cmd: 'cat share/VERSION.txt'
+    ReleaseCommit:
+        setup_dir: lang/py/build
+        add_files:
+            - share/VERSION.txt
+    SetupBuild:
+        plugin_class: RunCommand
+        command: 'ant -f lang/py/build.xml build'
+    VerifyVersion:
+        setup_dir: lang/py/build
+    BuildDist:
+        setup_dir: lang/py/build
+    UploadBuild:
+        plugin_class: UploadToS3
+        bucket_name: yelp-pypi-dev
+        bucket_region: us-west-2
+        key_prefix: ''
+        boto_auth_file: /etc/boto_cfg/pypi.cfg
+        files:
+            - 'dist/{name}-*.tar.gz'
+            - 'dist/{name}-*.whl'
+
+events:
+    release:
+        help: 'Updates necessary files for a new version release, commits, and pushes it to origin'
+        local:
+            - IncrementLocalVersion
+            - SetupBuild
+            - ReleaseCommit
+            - GitPush
+    publish:
+        help: 'Verifies version, builds whl and tar.gz of release, and uploads to pypi'
+        local:
+            - SetupBuild
+            - VerifyVersion
+            - CleanDist
+            - BuildDist
+            - UploadBuild
+            - RecordPypiUpload
+            - CleanupVenv
+
+workflows:
+    - Start -> release -> VersionCreated
+    - VersionCreated -> publish -> End

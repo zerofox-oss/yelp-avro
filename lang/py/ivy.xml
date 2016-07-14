@@ -19,6 +19,6 @@
     <configurations defaultconfmapping="default"/>
     <dependencies>
         <dependency org="org.apache.avro" name="avro-tools"
-                    rev="${avro.version}" transitive="false"/>
+                    rev="1.9.0-SNAPSHOT" transitive="false"/>
     </dependencies>
 </ivy-module>
