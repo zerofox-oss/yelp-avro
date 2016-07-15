@@ -7,7 +7,8 @@ plugins:
         boto_auth_file: /etc/boto_cfg/scarab.cfg
     YelpTransport: {}
     # Event plugins
-    GitPush: {}
+    GitPush:
+        remote_target: trunk
     CleanDist: {}
     RecordPypiUpload: {}
     CleanupVenv: {}
