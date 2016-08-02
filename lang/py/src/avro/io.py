@@ -50,7 +50,7 @@ except ImportError:
 
 from avro import schema
 from avro import constants
-from avro.lib import timezones
+from avro import timezones
 
 #
 # Constants
