@@ -39,7 +39,6 @@ uses the following mapping:
 import struct
 import sys
 import datetime
-import pytz
 from binascii import crc32
 from decimal import Decimal
 from decimal import getcontext
@@ -51,6 +50,7 @@ except ImportError:
 
 from avro import schema
 from avro import constants
+from avro.lib import timezones
 
 #
 # Constants
@@ -341,7 +341,7 @@ class BinaryDecoder(object):
     """
     timestamp_millis = self.read_long()
     timedelta = datetime.timedelta(microseconds=timestamp_millis * 1000)
-    unix_epoch_datetime = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=pytz.utc) 
+    unix_epoch_datetime = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc) 
     return unix_epoch_datetime + timedelta
 
   def read_timestamp_micros_from_long(self):
@@ -351,7 +351,7 @@ class BinaryDecoder(object):
     """
     timestamp_micros = self.read_long()
     timedelta = datetime.timedelta(microseconds=timestamp_micros)
-    unix_epoch_datetime = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=pytz.utc)
+    unix_epoch_datetime = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     return unix_epoch_datetime + timedelta
 
   def check_crc32(self, bytes):
@@ -586,8 +586,8 @@ class BinaryEncoder(object):
     Encode python datetime object as long.
     It stores the number of milliseconds from midnight of unix epoch, 1 January 1970.
     """
-    datum = datum.astimezone(tz=pytz.utc)
-    timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=pytz.utc)
+    datum = datum.astimezone(tz=timezones.utc)
+    timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     milliseconds = self._timedelta_total_microseconds(timedelta) / 1000
     self.write_long(long(milliseconds))
 
@@ -596,8 +596,8 @@ class BinaryEncoder(object):
     Encode python datetime object as long.
     It stores the number of microseconds from midnight of unix epoch, 1 January 1970.
     """
-    datum = datum.astimezone(tz=pytz.utc)
-    timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=pytz.utc)
+    datum = datum.astimezone(tz=timezones.utc)
+    timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     microseconds = self._timedelta_total_microseconds(timedelta)
     self.write_long(long(microseconds))
 
