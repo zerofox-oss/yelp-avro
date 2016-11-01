@@ -9,6 +9,8 @@ To contribute to Avro, please read:
   https://cwiki.apache.org/confluence/display/AVRO/How+To+Contribute
 
 =================================================================
+For Yelp usage, we use python version and added some data type support, which can be used in data pipeline project. All changes are in lang/py/.  
+
 Promote to Yelp pypi: 
 (Waiting for promote_to_pypi job upgrade, here is the temporary solution)
 1. Git clone this repo to your dev box.
