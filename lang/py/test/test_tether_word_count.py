@@ -146,7 +146,7 @@ class TestTetherWordCount(unittest.TestCase):
 
       args.append("java")
       args.append("-jar")
-      args.append(os.path.abspath("@TOPDIR@/../java/tools/target/avro-tools-@AVRO_VERSION@.jar"))
+      args.append(os.path.abspath("@TOPDIR@/../java/tools/target/avro-tools-1.9.0-SNAPSHOT.jar"))
 
 
       args.append("tether")
