@@ -25,6 +25,7 @@ try:
     import json
 except ImportError:
     import simplejson as json
+import six
 import csv
 from sys import stdout, stdin
 from itertools import ifilter, imap
@@ -43,7 +44,7 @@ def print_json_pretty(row):
 _write_row = csv.writer(stdout).writerow
 _encoding = stdout.encoding or "UTF-8"
 def _encode(v, encoding=_encoding):
-    if not isinstance(v, basestring):
+    if not isinstance(v, six.string_types):
         return v
     return v.encode(_encoding)
 

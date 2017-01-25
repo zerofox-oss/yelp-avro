@@ -47,6 +47,7 @@ try:
 	import json
 except ImportError:
 	import simplejson as json
+import six
 
 from avro import schema
 from avro import constants
@@ -118,7 +119,7 @@ def validate(expected_schema, datum):
   elif schema_type == 'boolean':
     return isinstance(datum, bool)
   elif schema_type == 'string':
-    return isinstance(datum, basestring)
+    return isinstance(datum, six.string_types)
   elif schema_type == 'bytes':
     if (hasattr(expected_schema, 'logical_type') and
         expected_schema.logical_type == constants.DECIMAL):
@@ -155,7 +156,7 @@ def validate(expected_schema, datum):
       False not in [validate(expected_schema.items, d) for d in datum])
   elif schema_type == 'map':
     return (isinstance(datum, dict) and
-      False not in [isinstance(k, basestring) for k in datum.keys()] and
+      False not in [isinstance(k, six.string_types) for k in datum.keys()] and
       False not in
         [validate(expected_schema.values, v) for v in datum.values()])
   elif schema_type in ['union', 'error_union']:
