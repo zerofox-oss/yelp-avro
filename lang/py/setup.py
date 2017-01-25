@@ -15,10 +15,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-  from setuptools import setup
-except ImportError:
-  from distutils.core import setup
+from setuptools import setup
+from setuptools import find_packages
 from sys import version_info
 
 install_requires = ['six']
@@ -28,7 +26,7 @@ if version_info[:2] <= (2, 5):
 setup(
   name = 'avro',
   version = '@AVRO_VERSION@',
-  packages = ['avro',],
+  packages=find_packages('src', exclude=('tests*',)),
   package_dir = {'avro': 'src/avro'},
   scripts = ["scripts/avro"],
 
