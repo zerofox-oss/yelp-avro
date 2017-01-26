@@ -39,7 +39,7 @@ class TestTetherTask(unittest.TestCase):
     from avro import schema
     from avro.tether import HTTPRequestor,inputProtocol, find_port
 
-    import StringIO
+    from six import BytesIO
     import mock_tether_parent
     from word_count_task import WordCountTask
 
@@ -72,7 +72,7 @@ class TestTetherTask(unittest.TestCase):
 
       # Serialize some data so we can send it to the input function
       datum="This is a line of text"
-      writer = StringIO.StringIO()
+      writer = BytesIO()
       encoder = avio.BinaryEncoder(writer)
       datum_writer = avio.DatumWriter(task.inschema)
       datum_writer.write(datum, encoder)
@@ -88,7 +88,7 @@ class TestTetherTask(unittest.TestCase):
 
       # Serialize some data so we can send it to the input function
       datum={"key":"word","value":2}
-      writer = StringIO.StringIO()
+      writer = BytesIO()
       encoder = avio.BinaryEncoder(writer)
       datum_writer = avio.DatumWriter(task.midschema)
       datum_writer.write(datum, encoder)

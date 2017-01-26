@@ -15,10 +15,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-  from cStringIO import StringIO
-except ImportError:
-  from StringIO import StringIO
+
+from six import BytesIO
+
 from avro import ipc
 from avro import io
 
@@ -36,7 +35,7 @@ class TwistedRequestor(ipc.BaseRequestor):
      returning value, instead of blocking until the request completes."""
   def _process_handshake(self, call_response, message_name, request_datum):
     # process the handshake and call response
-    buffer_decoder = io.BinaryDecoder(StringIO(call_response))
+    buffer_decoder = io.BinaryDecoder(BytesIO(call_response))
     call_response_exists = self.read_handshake_response(buffer_decoder)
     if call_response_exists:
       return self.read_call_response(message_name, buffer_decoder)

@@ -34,7 +34,7 @@ class TestTetherTaskRunner(unittest.TestCase):
     from avro import io as avio
     import mock_tether_parent
     import subprocess
-    import StringIO
+    from six import BytesIO
     import logging
 
     # set the logging level to debug so that debug messages are printed
@@ -72,7 +72,7 @@ class TestTetherTaskRunner(unittest.TestCase):
 
       # Serialize some data so we can send it to the input function
       datum="This is a line of text"
-      writer = StringIO.StringIO()
+      writer = BytesIO()
       encoder = avio.BinaryEncoder(writer)
       datum_writer = avio.DatumWriter(runner.task.inschema)
       datum_writer.write(datum, encoder)
@@ -89,7 +89,7 @@ class TestTetherTaskRunner(unittest.TestCase):
 
       #Serialize some data so we can send it to the input function
       datum={"key":"word","value":2}
-      writer = StringIO.StringIO()
+      writer = BytesIO()
       encoder = avio.BinaryEncoder(writer)
       datum_writer = avio.DatumWriter(runner.task.midschema)
       datum_writer.write(datum, encoder)
@@ -140,7 +140,7 @@ class TestTetherTaskRunner(unittest.TestCase):
     from avro import io as avio
     import mock_tether_parent
     import subprocess
-    import StringIO
+    from six import BytesIO
 
 
     proc=None
