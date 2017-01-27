@@ -133,7 +133,7 @@ def validate(expected_schema, datum):
         return isinstance(datum, datetime.date)
       elif expected_schema.logical_type == constants.TIME_MILLIS:
         return isinstance(datum, datetime.time)
-    return (isinstance(datum, (int, long))
+    return (isinstance(datum, six.integer_types)
             and INT_MIN_VALUE <= datum <= INT_MAX_VALUE)
   elif schema_type == 'long':
     if hasattr(expected_schema, 'logical_type'):
@@ -141,10 +141,10 @@ def validate(expected_schema, datum):
         return isinstance(datum, datetime.time)
       elif expected_schema.logical_type in [constants.TIMESTAMP_MILLIS, constants.TIMESTAMP_MICROS]:
         return isinstance(datum, datetime.datetime) and _is_timezone_aware_datetime(datum)
-    return (isinstance(datum, (int, long))
+    return (isinstance(datum, six.integer_types)
             and LONG_MIN_VALUE <= datum <= LONG_MAX_VALUE)
   elif schema_type in ['float', 'double']:
-    return isinstance(datum, (int, long, float))
+    return isinstance(datum, six.integer_types + (float,))
   # Check for int, float, long and decimal
   elif schema_type == 'fixed':
     if (hasattr(expected_schema, 'logical_type') and
@@ -592,7 +592,7 @@ class BinaryEncoder(object):
     datum = datum.astimezone(tz=timezones.utc)
     timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     milliseconds = self._timedelta_total_microseconds(timedelta) / 1000
-    self.write_long(long(milliseconds))
+    self.write_long(int(milliseconds))
 
   def write_timestamp_micros_long(self, datum):
     """
@@ -602,7 +602,7 @@ class BinaryEncoder(object):
     datum = datum.astimezone(tz=timezones.utc)
     timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     microseconds = self._timedelta_total_microseconds(timedelta)
-    self.write_long(long(microseconds))
+    self.write_long(int(microseconds))
 
 #
 # DatumReader/Writer
@@ -994,7 +994,10 @@ class DatumReader(object):
     elif field_schema.type == 'int':
       return int(default_value)
     elif field_schema.type == 'long':
-      return long(default_value)
+      if six.PY3:
+        return int(default_value)
+      else:
+        return long(default_value)
     elif field_schema.type in ['float', 'double']:
       return float(default_value)
     elif field_schema.type in ['enum', 'fixed', 'string', 'bytes']:
