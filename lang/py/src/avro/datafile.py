@@ -32,7 +32,7 @@ except ImportError:
 #
 
 VERSION = 1
-MAGIC = 'Obj' + chr(VERSION)
+MAGIC = b'Obj' + six.int2byte(VERSION)
 MAGIC_SIZE = len(MAGIC)
 SYNC_SIZE = 16
 SYNC_INTERVAL = 4000 * SYNC_SIZE # TODO(hammer): make configurable
@@ -372,4 +372,4 @@ def generate_sixteen_random_bytes():
     return os.urandom(16)
   except:
     import random
-    return [ chr(random.randrange(256)) for i in range(16) ]
+    return bytearray([ random.randrange(256) for i in range(16) ])

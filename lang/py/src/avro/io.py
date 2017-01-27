@@ -39,6 +39,8 @@ uses the following mapping:
 import struct
 import sys
 import datetime
+import six
+from six import int2byte as chr
 from binascii import crc32
 from decimal import Decimal
 from decimal import getcontext
@@ -124,7 +126,7 @@ def validate(expected_schema, datum):
     if (hasattr(expected_schema, 'logical_type') and
         expected_schema.logical_type == constants.DECIMAL):
       return isinstance(datum, Decimal)
-    return isinstance(datum, str)
+    return isinstance(datum, bytes)
   elif schema_type == 'int':
     if hasattr(expected_schema, 'logical_type'):
       if expected_schema.logical_type == constants.DATE:
@@ -148,7 +150,7 @@ def validate(expected_schema, datum):
     if (hasattr(expected_schema, 'logical_type') and
         expected_schema.logical_type == constants.DECIMAL):
       return isinstance(datum, Decimal)
-    return isinstance(datum, str) and len(datum) == expected_schema.size
+    return isinstance(datum, bytes) and len(datum) == expected_schema.size
   elif schema_type == 'enum':
     return datum in expected_schema.symbols
   elif schema_type == 'array':
@@ -263,19 +265,19 @@ class BinaryDecoder(object):
     """
     datum = self.read(size)
     unscaled_datum = 0
-    msb = struct.unpack('!b', datum[0])[0]
+    msb = struct.unpack('!b', datum[:1])[0]
     leftmost_bit = (msb >> 7) & 1
     if leftmost_bit == 1:
-      modified_first_byte = ord(datum[0]) ^ (1 << 7)
+      modified_first_byte = ord(datum[:1]) ^ (1 << 7)
       datum = chr(modified_first_byte) + datum[1:]
       for offset in range(size):
         unscaled_datum <<= 8
-        unscaled_datum += ord(datum[offset])
+        unscaled_datum += ord(datum[offset:offset+1])
       unscaled_datum += pow(-2, (size*8) - 1)
     else:
       for offset in range(size):
         unscaled_datum <<= 8
-        unscaled_datum += ord(datum[offset])
+        unscaled_datum += ord(datum[offset:offset+1])
 
     original_prec = getcontext().prec
     getcontext().prec = precision
@@ -537,7 +539,7 @@ class BinaryEncoder(object):
     Bytes are encoded as a long followed by that many bytes of data. 
     """
     self.write_long(len(datum))
-    self.write(struct.pack('%ds' % len(datum), datum))
+    self.write(struct.pack(b'%ds' % len(datum), datum))
 
   def write_utf8(self, datum):
     """
@@ -1078,8 +1080,10 @@ class DatumWriter(object):
       if (hasattr(writers_schema, 'logical_type') and
           writers_schema.logical_type == constants.DECIMAL):
         encoder.write_decimal_bytes(datum, writers_schema.get_prop('scale'))
-      else:
+      elif isinstance(datum, bytes):
         encoder.write_bytes(datum)
+      else:
+        encoder.write_utf8(datum)
     elif writers_schema.type == 'fixed':
       if (hasattr(writers_schema, 'logical_type') and
           writers_schema.logical_type == constants.DECIMAL):

@@ -30,13 +30,13 @@ from avro import timezones
 SCHEMAS_TO_VALIDATE = (
   ('"null"', None),
   ('"boolean"', True),
-  ('"string"', unicode('adsfasdf09809dsf-=adsf')),
-  ('"bytes"', '12345abcd'),
+  ('"string"', u'adsfasdf09809dsf-=adsf'),
+  ('"bytes"', b'12345abcd'),
   ('"int"', 1234),
   ('"long"', 1234),
   ('"float"', 1234.0),
   ('"double"', 1234.0),
-  ('{"type": "fixed", "name": "Test", "size": 1}', 'B'),
+  ('{"type": "fixed", "name": "Test", "size": 1}', b'B'),
   ('{"type": "int", "logicalType": "date"}', datetime.date(2000, 1, 1)),
   ('{"type": "int", "logicalType": "time-millis"}', datetime.time(23, 59, 59, 999000)),
   ('{"type": "int", "logicalType": "time-millis"}', datetime.time(0, 0, 0, 000000)),
@@ -144,7 +144,7 @@ def avro_hexlify(reader):
   while (ord(current_byte) & 0x80) != 0:
     current_byte = reader.read(1)
     bytes.append(hexlify(current_byte))
-  return ' '.join(bytes)
+  return b' '.join(bytes)
 
 def print_test_name(test_name):
   print('')

@@ -413,17 +413,17 @@ class FramedReader(object):
       buffer = BytesIO()
       buffer_length = self._read_buffer_length()
       if buffer_length == 0:
-        return ''.join(message)
+        return b''.join(message)
       while buffer.tell() < buffer_length:
         chunk = self.reader.read(buffer_length - buffer.tell())
-        if chunk == '':
+        if chunk == b'':
           raise ConnectionClosedException("Reader read 0 bytes.")
         buffer.write(chunk)
       message.append(buffer.getvalue())
 
   def _read_buffer_length(self):
     read = self.reader.read(BUFFER_HEADER_LENGTH)
-    if read == '':
+    if read == b'':
       raise ConnectionClosedException("Reader read 0 bytes.")
     return BIG_ENDIAN_INT_STRUCT.unpack(read)[0]
 
