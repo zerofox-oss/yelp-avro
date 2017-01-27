@@ -49,7 +49,7 @@ class TestTetherWordCount(unittest.TestCase):
         os.mkdir(pdir)
 
 
-    with file(fname,'w') as hf:
+    with open(fname,'wb') as hf:
       inschema="""{"type":"string"}"""
       writer=DataFileWriter(hf,avio.DatumWriter(inschema),writers_schema=schema.parse(inschema))
 
@@ -192,7 +192,7 @@ python -m avro.tether.tether_task_runner word_count_task.WordCountTask
       proc.wait()
 
       # read the output
-      with file(os.path.join(outpath,"part-00000.avro")) as hf:
+      with open(os.path.join(outpath,"part-00000.avro"), 'rb') as hf:
         reader=DataFileReader(hf, DatumReader())
         for record in reader:
           self.assertEqual(record["value"],true_counts[record["key"]])
