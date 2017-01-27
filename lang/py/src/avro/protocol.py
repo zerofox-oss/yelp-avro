@@ -137,7 +137,7 @@ class Protocol(object):
     return to_dump
 
   def __str__(self):
-    return json.dumps(self.to_json())
+    return json.dumps(self.to_json(), sort_keys=True)
 
   def __eq__(self, that):
     to_cmp = json.loads(str(self))
