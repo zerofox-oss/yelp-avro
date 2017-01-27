@@ -101,7 +101,7 @@ class Protocol(object):
       self.set_prop('types', self._parse_types(types, type_names))
     if messages is not None:
       self.set_prop('messages', self._parse_messages(messages, type_names))
-    self._md5 = md5(str(self)).digest()
+    self._md5 = md5(str(self).encode('US-ASCII')).digest()
 
   # read-only properties
   name = property(lambda self: self.get_prop('name'))

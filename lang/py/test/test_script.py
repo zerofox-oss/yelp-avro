@@ -108,6 +108,7 @@ class TestCat(unittest.TestCase):
 
     def _run(self, *args, **kw):
         out = check_output([SCRIPT, "cat", self.avro_file] + list(args))
+        out = out.decode('UTF-8')
         if kw.get("raw"):
             return out
         else:
@@ -206,7 +207,8 @@ class TestWrite(unittest.TestCase):
 
     def load_avro(self, filename):
         out = check_output([SCRIPT, "cat", filename])
-        return map(json.loads, out.splitlines())
+        out = out.decode('UTF-8')
+        return [json.loads(line) for line in out.splitlines()]
 
     def test_version(self):
         check_call([SCRIPT, "write", "--version"])
