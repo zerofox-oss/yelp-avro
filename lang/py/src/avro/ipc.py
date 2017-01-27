@@ -16,7 +16,7 @@
 """
 Support for inter-process calls.
 """
-import httplib
+from six.moves import http_client
 from six import BytesIO
 
 from avro import io
@@ -472,7 +472,7 @@ class HTTPTransceiver(object):
   """
   def __init__(self, host, port, req_resource='/'):
     self.req_resource = req_resource
-    self.conn = httplib.HTTPConnection(host, port)
+    self.conn = http_client.HTTPConnection(host, port)
     self.conn.connect()
 
   # read-only properties
