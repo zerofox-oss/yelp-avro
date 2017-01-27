@@ -97,6 +97,7 @@ class TestTetherWordCount(unittest.TestCase):
     import inspect
 
     proc=None
+    exfile='/not/a/file'
 
     try:
 

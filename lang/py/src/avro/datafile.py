@@ -19,6 +19,7 @@ Read/Write Avro File Object Containers.
 
 from six import BytesIO
 
+import six
 import zlib
 from avro import schema
 from avro import io
@@ -218,7 +219,7 @@ class DataFileWriter(object):
     self.flush()
     self.writer.close()
 
-class DataFileReader(object):
+class DataFileReader(six.Iterator):
   """Read files written by DataFileWriter."""
   # TODO(hammer): allow user to specify expected schema?
   # TODO(hammer): allow user to specify the encoder
@@ -305,6 +306,9 @@ class DataFileReader(object):
 
     # set metadata
     self._meta = header['meta']
+    if six.PY3:
+      for key, value in self._meta.items():
+        self._meta[key] = value.decode('US-ASCII')
 
     # set sync marker
     self._sync_marker = header['sync']
@@ -347,7 +351,7 @@ class DataFileReader(object):
 
   # TODO(hammer): handle block of length zero
   # TODO(hammer): clean this up with recursion
-  def next(self):
+  def __next__(self):
     """Return the next datum in the file."""
     if self.block_count == 0:
       if self.is_EOF():

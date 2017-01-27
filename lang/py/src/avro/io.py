@@ -296,7 +296,7 @@ class BinaryDecoder(object):
     A string is encoded as a long followed by
     that many bytes of UTF-8 encoded character data.
     """
-    return unicode(self.read_bytes(), "utf-8")
+    return self.read_bytes().decode("utf-8")
 
   def read_date_from_int(self):
     """
@@ -528,7 +528,7 @@ class BinaryEncoder(object):
         bits_to_write = unscaled_datum >> (8 * index)
         self.write(chr(bits_to_write & 0xff))
     else:
-      for i in range(offset_bits/8):
+      for i in range(int(offset_bits/8)):
         self.write(chr(0))
       for index in range(bytes_req-1, -1, -1):
         bits_to_write = unscaled_datum >> (8 * index)
