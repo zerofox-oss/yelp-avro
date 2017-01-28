@@ -37,6 +37,9 @@ setup(
   # on the target machine
   install_requires = install_requires,
 
+  # we support python 2 and 3 in one package:
+  options={'bdist_wheel': {'universal': 1}},
+
   # metadata for upload to PyPI
   author = 'Apache Avro',
   author_email = 'dev@avro.apache.org',
@@ -44,6 +47,14 @@ setup(
   license = 'Apache License 2.0',
   keywords = 'avro serialization rpc',
   url = 'http://avro.apache.org/',
+  classifiers=[
+      'License :: OSI Approved :: Apache Software License',
+      'Programming Language :: Python :: 2',
+      'Programming Language :: Python :: 2.7',
+      'Programming Language :: Python :: 3',
+      'Programming Language :: Python :: 3.5',
+      'Programming Language :: Python :: Implementation :: CPython',
+  ],
   extras_require = {
     'snappy': ['python-snappy'],
   },
