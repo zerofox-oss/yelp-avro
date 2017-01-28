@@ -567,9 +567,14 @@ class TestSchema(unittest.TestCase):
         schema.parse('/not/a/real/file')
         caught_exception = False
     except schema.SchemaParseException as e:
-        expected_message = 'Error parsing JSON: /not/a/real/file, error = ' \
-                           'No JSON object could be decoded'
-        self.assertEqual(expected_message, e.args[0])
+        expected_messages = (
+	  'Error parsing JSON: /not/a/real/file, error = ' \
+          'No JSON object could be decoded'
+	  ,
+	  'Error parsing JSON: /not/a/real/file, error = ' \
+	  'Expecting value: line 1 column 1 (char 0)'
+	)
+        self.assertIn(e.args[0], expected_messages)
         caught_exception = True
 
     self.assertTrue(caught_exception, 'Exception was not caught')

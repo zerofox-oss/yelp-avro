@@ -189,6 +189,7 @@ class DataFileWriter(object):
 
       # reset buffer
       self.buffer_writer.truncate(0) 
+      self.buffer_writer.seek(0)  # py3: truncate no longer changes file position
       self.block_count = 0
 
   def append(self, datum):

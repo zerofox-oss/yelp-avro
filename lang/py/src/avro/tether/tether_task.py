@@ -105,6 +105,7 @@ class Collector(object):
     """
 
     self.buff.truncate(0)
+    self.buff.seek(0)  # py3: truncate no longer changes file position
     self.datum_writer.write(record, self.encoder);
     self.buff.flush();
     self.buff.seek(0)
