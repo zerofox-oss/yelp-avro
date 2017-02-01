@@ -31,7 +31,7 @@ setup(
   name = 'yelp-avro',
   version = '1.10.0',
   packages=find_packages('src', exclude=('tests*',)),
-  package_dir = {'avro': 'src/avro'},
+  package_dir = {'': 'src'},
   scripts = ["scripts/avro"],
 
   #include_package_data=True,
