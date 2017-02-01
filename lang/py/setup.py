@@ -18,10 +18,14 @@
 from setuptools import setup
 from setuptools import find_packages
 from sys import version_info
+import os
 
 install_requires = ['six']
 if version_info[:2] <= (2, 5):
     install_requires.append('simplejson >= 2.0.9')
+
+# Required since this python package is not in root dir of repo
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 setup(
   name = 'yelp-avro',
