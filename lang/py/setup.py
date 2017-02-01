@@ -24,8 +24,8 @@ if version_info[:2] <= (2, 5):
     install_requires.append('simplejson >= 2.0.9')
 
 setup(
-  name = 'avro',
-  version = '@AVRO_VERSION@',
+  name = 'yelp-avro',
+  version = '1.10.0',
   packages=find_packages('src', exclude=('tests*',)),
   package_dir = {'avro': 'src/avro'},
   scripts = ["scripts/avro"],
