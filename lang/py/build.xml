@@ -28,7 +28,7 @@
   <property name="top.build" value="${basedir}/../../build"/>
   <property name="interop.data.dir" value="${top.build}/interop/data"/>
 
-  <property name="python" value="python"/>
+  <property name="python" value="python2.7"/>
 
   <!-- Python implementation directories -->
   <property name="build.dir" value="${basedir}/build"/>
@@ -40,7 +40,11 @@
   <property name="ivy.jar" value="${basedir}/lib/ivy-${ivy.version}.jar"/>
 
   <!-- Load shared properties -->
-  <loadfile srcFile="${share.dir}/VERSION.txt" property="avro.version" />
+  <loadfile srcFile="${share.dir}/VERSION.txt" property="avro.version">
+    <filterchain>
+      <striplinebreaks/>
+    </filterchain>
+  </loadfile>
   <loadfile srcFile="${share.schema.dir}/org/apache/avro/ipc/HandshakeRequest.avsc" property="handshake.request.json"/>
   <loadfile srcFile="${share.schema.dir}/org/apache/avro/ipc/HandshakeResponse.avsc" property="handshake.response.json"/>
 
@@ -165,7 +169,6 @@
       <fileset dir="${build.dir}/test">
         <include name="test_*.py"/>
         <exclude name="test_datafile_interop.py"/>
-        <exclude name="test_tether*.py"/>
       </fileset>
     </py-test>
   </target>

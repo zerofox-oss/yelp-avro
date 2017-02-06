@@ -159,7 +159,7 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
-    <dependency>     
+    <dependency>
       <groupId>org.easymock</groupId>
       <artifactId>easymock</artifactId>
       <scope>test</scope>
@@ -184,7 +184,7 @@
       <version>${commons-codec.version}</version>
     </dependency>
   </dependencies>
-  
+
   <profiles>
      <profile>
       <id>hadoop1</id>
@@ -211,7 +211,8 @@
       <id>hadoop2</id>
       <activation>
         <property>
-          <name>!hadoop.version</name> <!-- if no hadoop.version is set -->
+          <name>hadoop.version</name>
+          <value>!1</value> <!-- if the hadoop.version is not 1 (or not set) -->
         </property>
       </activation>
       <properties>
