@@ -16,11 +16,9 @@
 """
 Support for inter-process calls.
 """
-import httplib
-try:
-  from cStringIO import StringIO
-except ImportError:
-  from StringIO import StringIO
+from six.moves import http_client
+from six import BytesIO
+
 from avro import io
 from avro import protocol
 from avro import schema
@@ -37,12 +35,16 @@ request_schema = """
     "type": "record",
     "name": "HandshakeRequest", "namespace":"org.apache.avro.ipc",
     "fields": [
-        {"name": "clientHash",
-     "type": {"type": "fixed", "name": "MD5", "size": 16}},
+        {
+            "name": "clientHash",
+            "type": {"type": "fixed", "name": "MD5", "size": 16}
+        },
         {"name": "clientProtocol", "type": ["null", "string"]},
         {"name": "serverHash", "type": "MD5"},
-    {"name": "meta", "type": ["null", {"type": "map", "values": "bytes"}]}
- ]
+        {"name": "meta", "type": ["null", {
+            "type": "map", "values": "bytes"
+        }]}
+    ]
 }
 """
 
@@ -138,7 +140,7 @@ class BaseRequestor(object):
     Writes a request message and reads a response or error message.
     """
     # build handshake and call request
-    buffer_writer = StringIO()
+    buffer_writer = BytesIO()
     buffer_encoder = io.BinaryEncoder(buffer_writer)
     self.write_handshake_request(buffer_encoder)
     self.write_call_request(message_name, request_datum, buffer_encoder)
@@ -259,7 +261,7 @@ class Requestor(BaseRequestor):
     call_response = self.transceiver.transceive(call_request)
 
     # process the handshake and call response
-    buffer_decoder = io.BinaryDecoder(StringIO(call_response))
+    buffer_decoder = io.BinaryDecoder(BytesIO(call_response))
     call_response_exists = self.read_handshake_response(buffer_decoder)
     if call_response_exists:
       return self.read_call_response(message_name, buffer_decoder)
@@ -290,9 +292,9 @@ class Responder(object):
     Called by a server to deserialize a request, compute and serialize
     a response or error. Compare to 'handle()' in Thrift.
     """
-    buffer_reader = StringIO(call_request)
+    buffer_reader = BytesIO(call_request)
     buffer_decoder = io.BinaryDecoder(buffer_reader)
-    buffer_writer = StringIO()
+    buffer_writer = BytesIO()
     buffer_encoder = io.BinaryEncoder(buffer_writer)
     error = None
     response_metadata = {}
@@ -325,9 +327,9 @@ class Responder(object):
       # perform server logic
       try:
         response = self.invoke(local_message, request)
-      except AvroRemoteException, e:
+      except AvroRemoteException as e:
         error = e
-      except Exception, e:
+      except Exception as e:
         error = AvroRemoteException(str(e))
 
       # write response using local protocol
@@ -339,9 +341,9 @@ class Responder(object):
       else:
         writers_schema = local_message.errors
         self.write_error(writers_schema, error, buffer_encoder)
-    except schema.AvroException, e:
+    except schema.AvroException as e:
       error = AvroRemoteException(str(e))
-      buffer_encoder = io.BinaryEncoder(StringIO())
+      buffer_encoder = io.BinaryEncoder(BytesIO())
       META_WRITER.write(response_metadata, buffer_encoder)
       buffer_encoder.write_boolean(True)
       self.write_error(SYSTEM_ERROR_SCHEMA, error, buffer_encoder)
@@ -412,20 +414,20 @@ class FramedReader(object):
   def read_framed_message(self):
     message = []
     while True:
-      buffer = StringIO()
+      buffer = BytesIO()
       buffer_length = self._read_buffer_length()
       if buffer_length == 0:
-        return ''.join(message)
+        return b''.join(message)
       while buffer.tell() < buffer_length:
         chunk = self.reader.read(buffer_length - buffer.tell())
-        if chunk == '':
+        if chunk == b'':
           raise ConnectionClosedException("Reader read 0 bytes.")
         buffer.write(chunk)
       message.append(buffer.getvalue())
 
   def _read_buffer_length(self):
     read = self.reader.read(BUFFER_HEADER_LENGTH)
-    if read == '':
+    if read == b'':
       raise ConnectionClosedException("Reader read 0 bytes.")
     return BIG_ENDIAN_INT_STRUCT.unpack(read)[0]
 
@@ -470,7 +472,7 @@ class HTTPTransceiver(object):
   """
   def __init__(self, host, port, req_resource='/'):
     self.req_resource = req_resource
-    self.conn = httplib.HTTPConnection(host, port)
+    self.conn = http_client.HTTPConnection(host, port)
     self.conn.connect()
 
   # read-only properties
@@ -499,7 +501,7 @@ class HTTPTransceiver(object):
     req_method = 'POST'
     req_headers = {'Content-Type': 'avro/binary'}
 
-    req_body_buffer = FramedWriter(StringIO())
+    req_body_buffer = FramedWriter(BytesIO())
     req_body_buffer.write_framed_message(message)
     req_body = req_body_buffer.writer.getvalue()
 

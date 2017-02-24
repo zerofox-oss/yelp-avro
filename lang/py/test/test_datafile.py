@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -25,13 +26,13 @@ from avro import datafile
 SCHEMAS_TO_VALIDATE = (
   ('"null"', None),
   ('"boolean"', True),
-  ('"string"', unicode('adsfasdf09809dsf-=adsf')),
-  ('"bytes"', '12345abcd'),
+  ('"string"', u'adsfasdf09809dsf-=adsf'),
+  ('"bytes"', b'12345abcd'),
   ('"int"', 1234),
   ('"long"', 1234),
   ('"float"', 1234.0),
   ('"double"', 1234.0),
-  ('{"type": "fixed", "name": "Test", "size": 1}', 'B'),
+  ('{"type": "fixed", "name": "Test", "size": 1}', b'B'),
   ('{"type": "enum", "name": "Test", "symbols": ["A", "B"]}', 'B'),
   ('{"type": "array", "items": "long"}', [1, 3, 2]),
   ('{"type": "map", "values": "long"}', {'a': 1, 'b': 3, 'c': 2}),
@@ -59,25 +60,25 @@ try:
   import snappy
   CODECS_TO_VALIDATE += ('snappy',)
 except ImportError:
-  print 'Snappy not present, will skip testing it.'
+  print('Snappy not present, will skip testing it.')
 
 # TODO(hammer): clean up written files with ant, not os.remove
 class TestDataFile(unittest.TestCase):
   def test_round_trip(self):
-    print ''
-    print 'TEST ROUND TRIP'
-    print '==============='
-    print ''
+    print('')
+    print('TEST ROUND TRIP')
+    print('===============')
+    print('')
     correct = 0
     for i, (example_schema, datum) in enumerate(SCHEMAS_TO_VALIDATE):
       for codec in CODECS_TO_VALIDATE:
-        print ''
-        print 'SCHEMA NUMBER %d' % (i + 1)
-        print '================'
-        print ''
-        print 'Schema: %s' % example_schema
-        print 'Datum: %s' % datum
-        print 'Codec: %s' % codec
+        print('')
+        print('SCHEMA NUMBER %d' % (i + 1))
+        print('================')
+        print('')
+        print('Schema: %s' % example_schema)
+        print('Datum: %s' % datum)
+        print('Codec: %s' % codec)
 
         # write data in binary to file 10 times
         writer = open(FILENAME, 'wb')
@@ -96,30 +97,30 @@ class TestDataFile(unittest.TestCase):
         for datum in dfr:
           round_trip_data.append(datum)
 
-        print 'Round Trip Data: %s' % round_trip_data
-        print 'Round Trip Data Length: %d' % len(round_trip_data)
+        print('Round Trip Data: %s' % round_trip_data)
+        print('Round Trip Data Length: %d' % len(round_trip_data))
         is_correct = [datum] * 10 == round_trip_data
         if is_correct: correct += 1
-        print 'Correct Round Trip: %s' % is_correct
-        print ''
+        print('Correct Round Trip: %s' % is_correct)
+        print('')
     os.remove(FILENAME)
     self.assertEquals(correct, len(CODECS_TO_VALIDATE)*len(SCHEMAS_TO_VALIDATE))
 
   def test_append(self):
-    print ''
-    print 'TEST APPEND'
-    print '==========='
-    print ''
+    print('')
+    print('TEST APPEND')
+    print('===========')
+    print('')
     correct = 0
     for i, (example_schema, datum) in enumerate(SCHEMAS_TO_VALIDATE):
       for codec in CODECS_TO_VALIDATE:
-        print ''
-        print 'SCHEMA NUMBER %d' % (i + 1)
-        print '================'
-        print ''
-        print 'Schema: %s' % example_schema
-        print 'Datum: %s' % datum
-        print 'Codec: %s' % codec
+        print('')
+        print('SCHEMA NUMBER %d' % (i + 1))
+        print('================')
+        print('')
+        print('Schema: %s' % example_schema)
+        print('Datum: %s' % datum)
+        print('Codec: %s' % codec)
 
         # write data in binary to file once
         writer = open(FILENAME, 'wb')
@@ -144,12 +145,12 @@ class TestDataFile(unittest.TestCase):
         for datum in dfr:
           appended_data.append(datum)
 
-        print 'Appended Data: %s' % appended_data
-        print 'Appended Data Length: %d' % len(appended_data)
+        print('Appended Data: %s' % appended_data)
+        print('Appended Data Length: %d' % len(appended_data))
         is_correct = [datum] * 10 == appended_data
         if is_correct: correct += 1
-        print 'Correct Appended: %s' % is_correct
-        print ''
+        print('Correct Appended: %s' % is_correct)
+        print('')
     os.remove(FILENAME)
     self.assertEquals(correct, len(CODECS_TO_VALIDATE)*len(SCHEMAS_TO_VALIDATE))
 
@@ -158,7 +159,7 @@ class TestDataFile(unittest.TestCase):
     # member only in Python 2.6 and above.
     import sys
     if sys.version_info < (2,6):
-      print 'Skipping context manager tests on this Python version.'
+      print('Skipping context manager tests on this Python version.')
       return
     # Test the writer with a 'with' statement.
     writer = open(FILENAME, 'wb')

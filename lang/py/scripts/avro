@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Command line utlity for reading and writing Avro files."""
+from __future__ import print_function
 
 from avro.io import DatumReader, DatumWriter
 from avro.datafile import DataFileReader, DataFileWriter
@@ -25,9 +26,9 @@ try:
     import json
 except ImportError:
     import simplejson as json
+import six
 import csv
 from sys import stdout, stdin
-from itertools import ifilter, imap
 from functools import partial
 from os.path import splitext
 
@@ -38,19 +39,22 @@ def print_json(row):
     print(json.dumps(row))
 
 def print_json_pretty(row):
-    print(json.dumps(row, indent=4))
+    print(json.dumps(row, indent=4, sort_keys=True))
 
 _write_row = csv.writer(stdout).writerow
 _encoding = stdout.encoding or "UTF-8"
-def _encode(v, encoding=_encoding):
-    if not isinstance(v, basestring):
+def _tostr(v, encoding=_encoding):
+    if isinstance(v, str):
         return v
-    return v.encode(_encoding)
+    elif six.PY2:
+        return v.encode(_encoding)
+    else:
+        return v.decode(_encoding)
 
 def print_csv(row):
     # We sort the keys to the fields will be in the same place
     # FIXME: Do we want to do it in schema order?
-    _write_row([_encode(row[key]) for key in sorted(row)])
+    _write_row([_tostr(row[key]) for key in sorted(row)])
 
 def select_printer(format):
     return {
@@ -81,9 +85,9 @@ def print_avro(avro, opts):
 
     # Apply filter first
     if opts.filter:
-        avro = ifilter(partial(record_match, opts.filter), avro)
+        avro = [x for x in avro if record_match(opts.filter, x)]
 
-    for i in xrange(opts.skip):
+    for i in range(opts.skip):
         try:
             next(avro)
         except StopIteration:
@@ -91,7 +95,7 @@ def print_avro(avro, opts):
 
     fields = parse_fields(opts.fields)
     if fields:
-        avro = imap(field_selector(fields), avro)
+        avro = [field_selector(fields)(x) for x in avro]
 
     printer = select_printer(opts.format)
     for i, record in enumerate(avro):
@@ -104,7 +108,7 @@ def print_avro(avro, opts):
 def print_schema(avro):
     schema = avro.meta["avro.schema"]
     # Pretty print
-    print json.dumps(json.loads(schema), indent=4)
+    print(json.dumps(json.loads(schema), indent=4))
 
 def cat(opts, args):
     if not args:
@@ -113,7 +117,7 @@ def cat(opts, args):
     for filename in args:
         try:
             fo = open(filename, "rb")
-        except (OSError, IOError), e:
+        except (OSError, IOError) as e:
             raise AvroError("Can't open %s - %s" % (filename, e))
 
         avro = DataFileReader(fo, DatumReader())
@@ -127,14 +131,14 @@ def cat(opts, args):
 def _open(filename, mode):
     if filename == "-":
         return {
-            "rb" : stdin,
-            "wb" : stdout
+            "r" : stdin,
+            "wb" : stdout if six.PY2 else stdout.buffer,
         }[mode]
 
     return open(filename, mode)
 
 def iter_json(info, _):
-    return imap(json.loads, info)
+    return [json.loads(x) for x in info]
 
 def convert(value, field):
     type = field.type.type
@@ -143,7 +147,7 @@ def convert(value, field):
 
     return  {
         "int" : int,
-        "long" : long,
+        "long" : long if six.PY2 else int,
         "float" : float,
         "double" : float,
         "string" : str,
@@ -187,16 +191,16 @@ def write(opts, files):
         raise AvroError("Can't guess input file type (not .json or .csv)")
 
     try:
-        schema = avro.schema.parse(open(opts.schema, "rb").read())
+        schema = avro.schema.parse(open(opts.schema, "r").read())
         out = _open(opts.output, "wb")
-    except (IOError, OSError), e:
+    except (IOError, OSError) as e:
         raise AvroError("Can't open file - %s" % e)
 
     writer = DataFileWriter(out, DatumWriter(), schema)
 
     iter_records = {"json" : iter_json, "csv" : iter_csv}[input_type]
     for filename in (files or ["-"]):
-        info = _open(filename, "rb")
+        info = _open(filename, "r")
         for record in iter_records(info, schema):
             writer.append(record)
 
@@ -252,9 +256,9 @@ def main(argv=None):
             write(opts, args)
         else:
             raise AvroError("Unknown command - %s" % command)
-    except AvroError, e:
+    except AvroError as e:
         parser.error("%s" % e) # Will exit
-    except Exception, e:
+    except Exception as e:
         raise SystemExit("panic: %s" % e)
 
 if __name__ == "__main__":

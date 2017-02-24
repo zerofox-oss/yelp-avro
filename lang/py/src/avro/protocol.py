@@ -24,6 +24,7 @@ try:
   import json
 except ImportError:
   import simplejson as json
+import six
 from avro import schema
 
 #
@@ -58,8 +59,8 @@ class Protocol(object):
 
   def _parse_messages(self, messages, names):
     message_objects = {}
-    for name, body in messages.iteritems():
-      if message_objects.has_key(name):
+    for name, body in messages.items():
+      if name in message_objects:
         fail_msg = 'Message name "%s" repeated.' % name
         raise ProtocolParseException(fail_msg)
       elif not(hasattr(body, 'get') and callable(body.get)):
@@ -76,10 +77,10 @@ class Protocol(object):
     if not name:
       fail_msg = 'Protocols must have a non-empty name.'
       raise ProtocolParseException(fail_msg)
-    elif not isinstance(name, basestring):
+    elif not isinstance(name, six.string_types):
       fail_msg = 'The name property must be a string.'
       raise ProtocolParseException(fail_msg)
-    elif namespace is not None and not isinstance(namespace, basestring):
+    elif namespace is not None and not isinstance(namespace, six.string_types):
       fail_msg = 'The namespace property must be a string.'
       raise ProtocolParseException(fail_msg)
     elif types is not None and not isinstance(types, list):
@@ -100,7 +101,7 @@ class Protocol(object):
       self.set_prop('types', self._parse_types(types, type_names))
     if messages is not None:
       self.set_prop('messages', self._parse_messages(messages, type_names))
-    self._md5 = md5(str(self)).digest()
+    self._md5 = md5(str(self).encode('US-ASCII')).digest()
 
   # read-only properties
   name = property(lambda self: self.get_prop('name'))
@@ -130,13 +131,13 @@ class Protocol(object):
       to_dump['types'] = [ t.to_json(names) for t in self.types ]
     if self.messages:
       messages_dict = {}
-      for name, body in self.messages.iteritems():
+      for name, body in self.messages.items():
         messages_dict[name] = body.to_json(names)
       to_dump['messages'] = messages_dict
     return to_dump
 
   def __str__(self):
-    return json.dumps(self.to_json())
+    return json.dumps(self.to_json(), sort_keys=True)
 
   def __eq__(self, that):
     to_cmp = json.loads(str(self))
@@ -151,7 +152,7 @@ class Message(object):
     return schema.RecordSchema(None, None, request, names, 'request')
   
   def _parse_response(self, response, names):
-    if isinstance(response, basestring) and names.has_name(response, None):
+    if isinstance(response, six.string_types) and names.has_name(response, None):
       return names.get_name(response, None)
     else:
       return schema.make_avsc_object(response, names)

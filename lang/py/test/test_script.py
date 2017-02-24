@@ -13,9 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from six.moves import cStringIO as StringIO
+
 import unittest
 import csv
-from cStringIO import StringIO
 try:
     import json
 except ImportError:
@@ -78,9 +80,9 @@ def looney_records():
 SCRIPT = join(dirname(__file__), "..", "scripts", "avro")
 
 _JSON_PRETTY = '''{
-    "type": "duck", 
-    "last": "duck", 
-    "first": "daffy"
+    "first": "daffy",
+    "last": "duck",
+    "type": "duck"
 }'''
 
 def gen_avro(filename):
@@ -106,6 +108,7 @@ class TestCat(unittest.TestCase):
 
     def _run(self, *args, **kw):
         out = check_output([SCRIPT, "cat", self.avro_file] + list(args))
+        out = out.decode('UTF-8')
         if kw.get("raw"):
             return out
         else:
@@ -129,7 +132,8 @@ class TestCat(unittest.TestCase):
         io = StringIO(self._run("-f", "csv", "--header", raw=True))
         reader = csv.DictReader(io)
         r = {"type": "duck", "last": "duck", "first": "daffy"}
-        assert next(reader) == r
+        l = next(reader)
+        assert l == r, '\n%r\n%r' % (l, r)
 
     def test_print_schema(self):
         out = self._run("--print-schema", raw=True)
@@ -142,14 +146,15 @@ class TestCat(unittest.TestCase):
 
     def test_json_pretty(self):
         out = self._run("--format", "json-pretty", "-n", "1", raw=1)
-        assert out.strip() == _JSON_PRETTY.strip()
+        out = out.strip().replace(', \n', ',\n')
+        assert out == _JSON_PRETTY, '\n%r\n%r' % (out, _JSON_PRETTY)
 
     def test_version(self):
         check_output([SCRIPT, "cat", "--version"])
 
     def test_files(self):
         out = self._run(self.avro_file)
-        assert len(out) == 2 * NUM_RECORDS
+        assert len(out) == 2 * NUM_RECORDS, (out, NUM_RECORDS)
 
     def test_fields(self):
         # One field selection (no comma)
@@ -204,7 +209,8 @@ class TestWrite(unittest.TestCase):
 
     def load_avro(self, filename):
         out = check_output([SCRIPT, "cat", filename])
-        return map(json.loads, out.splitlines())
+        out = out.decode('UTF-8')
+        return [json.loads(line) for line in out.splitlines()]
 
     def test_version(self):
         check_call([SCRIPT, "write", "--version"])

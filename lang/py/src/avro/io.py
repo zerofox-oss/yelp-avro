@@ -39,6 +39,8 @@ uses the following mapping:
 import struct
 import sys
 import datetime
+import six
+from six import int2byte as chr
 from binascii import crc32
 from decimal import Decimal
 from decimal import getcontext
@@ -47,6 +49,7 @@ try:
 	import json
 except ImportError:
 	import simplejson as json
+import six
 
 from avro import schema
 from avro import constants
@@ -118,19 +121,19 @@ def validate(expected_schema, datum):
   elif schema_type == 'boolean':
     return isinstance(datum, bool)
   elif schema_type == 'string':
-    return isinstance(datum, basestring)
+    return isinstance(datum, six.string_types)
   elif schema_type == 'bytes':
     if (hasattr(expected_schema, 'logical_type') and
         expected_schema.logical_type == constants.DECIMAL):
       return isinstance(datum, Decimal)
-    return isinstance(datum, str)
+    return isinstance(datum, bytes)
   elif schema_type == 'int':
     if hasattr(expected_schema, 'logical_type'):
       if expected_schema.logical_type == constants.DATE:
         return isinstance(datum, datetime.date)
       elif expected_schema.logical_type == constants.TIME_MILLIS:
         return isinstance(datum, datetime.time)
-    return (isinstance(datum, (int, long))
+    return (isinstance(datum, six.integer_types)
             and INT_MIN_VALUE <= datum <= INT_MAX_VALUE)
   elif schema_type == 'long':
     if hasattr(expected_schema, 'logical_type'):
@@ -138,16 +141,16 @@ def validate(expected_schema, datum):
         return isinstance(datum, datetime.time)
       elif expected_schema.logical_type in [constants.TIMESTAMP_MILLIS, constants.TIMESTAMP_MICROS]:
         return isinstance(datum, datetime.datetime) and _is_timezone_aware_datetime(datum)
-    return (isinstance(datum, (int, long))
+    return (isinstance(datum, six.integer_types)
             and LONG_MIN_VALUE <= datum <= LONG_MAX_VALUE)
   elif schema_type in ['float', 'double']:
-    return isinstance(datum, (int, long, float))
+    return isinstance(datum, six.integer_types + (float,))
   # Check for int, float, long and decimal
   elif schema_type == 'fixed':
     if (hasattr(expected_schema, 'logical_type') and
         expected_schema.logical_type == constants.DECIMAL):
       return isinstance(datum, Decimal)
-    return isinstance(datum, str) and len(datum) == expected_schema.size
+    return isinstance(datum, bytes) and len(datum) == expected_schema.size
   elif schema_type == 'enum':
     return datum in expected_schema.symbols
   elif schema_type == 'array':
@@ -155,7 +158,7 @@ def validate(expected_schema, datum):
       False not in [validate(expected_schema.items, d) for d in datum])
   elif schema_type == 'map':
     return (isinstance(datum, dict) and
-      False not in [isinstance(k, basestring) for k in datum.keys()] and
+      False not in [isinstance(k, six.string_types) for k in datum.keys()] and
       False not in
         [validate(expected_schema.values, v) for v in datum.values()])
   elif schema_type in ['union', 'error_union']:
@@ -225,10 +228,10 @@ class BinaryDecoder(object):
     The float is converted into a 32-bit integer using a method equivalent to
     Java's floatToIntBits and then encoded in little-endian format.
     """
-    bits = (((ord(self.read(1)) & 0xffL)) |
-      ((ord(self.read(1)) & 0xffL) <<  8) |
-      ((ord(self.read(1)) & 0xffL) << 16) |
-      ((ord(self.read(1)) & 0xffL) << 24))
+    bits = (((ord(self.read(1)) & 0xff)) |
+      ((ord(self.read(1)) & 0xff) <<  8) |
+      ((ord(self.read(1)) & 0xff) << 16) |
+      ((ord(self.read(1)) & 0xff) << 24))
     return STRUCT_FLOAT.unpack(STRUCT_INT.pack(bits))[0]
 
   def read_double(self):
@@ -237,14 +240,14 @@ class BinaryDecoder(object):
     The double is converted into a 64-bit integer using a method equivalent to
     Java's doubleToLongBits and then encoded in little-endian format.
     """
-    bits = (((ord(self.read(1)) & 0xffL)) |
-      ((ord(self.read(1)) & 0xffL) <<  8) |
-      ((ord(self.read(1)) & 0xffL) << 16) |
-      ((ord(self.read(1)) & 0xffL) << 24) |
-      ((ord(self.read(1)) & 0xffL) << 32) |
-      ((ord(self.read(1)) & 0xffL) << 40) |
-      ((ord(self.read(1)) & 0xffL) << 48) |
-      ((ord(self.read(1)) & 0xffL) << 56))
+    bits = (((ord(self.read(1)) & 0xff)) |
+      ((ord(self.read(1)) & 0xff) <<  8) |
+      ((ord(self.read(1)) & 0xff) << 16) |
+      ((ord(self.read(1)) & 0xff) << 24) |
+      ((ord(self.read(1)) & 0xff) << 32) |
+      ((ord(self.read(1)) & 0xff) << 40) |
+      ((ord(self.read(1)) & 0xff) << 48) |
+      ((ord(self.read(1)) & 0xff) << 56))
     return STRUCT_DOUBLE.unpack(STRUCT_LONG.pack(bits))[0]
 
   def read_decimal_from_bytes(self, precision, scale):
@@ -262,19 +265,19 @@ class BinaryDecoder(object):
     """
     datum = self.read(size)
     unscaled_datum = 0
-    msb = struct.unpack('!b', datum[0])[0]
+    msb = struct.unpack('!b', datum[:1])[0]
     leftmost_bit = (msb >> 7) & 1
     if leftmost_bit == 1:
-      modified_first_byte = ord(datum[0]) ^ (1 << 7)
+      modified_first_byte = ord(datum[:1]) ^ (1 << 7)
       datum = chr(modified_first_byte) + datum[1:]
       for offset in range(size):
         unscaled_datum <<= 8
-        unscaled_datum += ord(datum[offset])
+        unscaled_datum += ord(datum[offset:offset+1])
       unscaled_datum += pow(-2, (size*8) - 1)
     else:
       for offset in range(size):
         unscaled_datum <<= 8
-        unscaled_datum += ord(datum[offset])
+        unscaled_datum += ord(datum[offset:offset+1])
 
     original_prec = getcontext().prec
     getcontext().prec = precision
@@ -293,7 +296,7 @@ class BinaryDecoder(object):
     A string is encoded as a long followed by
     that many bytes of UTF-8 encoded character data.
     """
-    return unicode(self.read_bytes(), "utf-8")
+    return self.read_bytes().decode("utf-8")
 
   def read_date_from_int(self):
     """
@@ -525,7 +528,7 @@ class BinaryEncoder(object):
         bits_to_write = unscaled_datum >> (8 * index)
         self.write(chr(bits_to_write & 0xff))
     else:
-      for i in range(offset_bits/8):
+      for i in range(int(offset_bits/8)):
         self.write(chr(0))
       for index in range(bytes_req-1, -1, -1):
         bits_to_write = unscaled_datum >> (8 * index)
@@ -536,7 +539,7 @@ class BinaryEncoder(object):
     Bytes are encoded as a long followed by that many bytes of data. 
     """
     self.write_long(len(datum))
-    self.write(struct.pack('%ds' % len(datum), datum))
+    self.write(struct.pack(b'%ds' % len(datum), datum))
 
   def write_utf8(self, datum):
     """
@@ -589,7 +592,7 @@ class BinaryEncoder(object):
     datum = datum.astimezone(tz=timezones.utc)
     timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     milliseconds = self._timedelta_total_microseconds(timedelta) / 1000
-    self.write_long(long(milliseconds))
+    self.write_long(int(milliseconds))
 
   def write_timestamp_micros_long(self, datum):
     """
@@ -599,7 +602,7 @@ class BinaryEncoder(object):
     datum = datum.astimezone(tz=timezones.utc)
     timedelta = datum - datetime.datetime(1970, 1, 1, 0, 0, 0, 0, tzinfo=timezones.utc)
     microseconds = self._timedelta_total_microseconds(timedelta)
-    self.write_long(long(microseconds))
+    self.write_long(int(microseconds))
 
 #
 # DatumReader/Writer
@@ -966,7 +969,7 @@ class DatumReader(object):
     if len(readers_fields_dict) > len(read_record):
       writers_fields_dict = writers_schema.fields_dict
       for field_name, field in readers_fields_dict.items():
-        if not writers_fields_dict.has_key(field_name):
+        if field_name not in writers_fields_dict:
           if field.has_default:
             field_val = self._read_default_value(field.type, field.default)
             read_record[field.name] = field_val
@@ -991,7 +994,10 @@ class DatumReader(object):
     elif field_schema.type == 'int':
       return int(default_value)
     elif field_schema.type == 'long':
-      return long(default_value)
+      if six.PY3:
+        return int(default_value)
+      else:
+        return long(default_value)
     elif field_schema.type in ['float', 'double']:
       return float(default_value)
     elif field_schema.type in ['enum', 'fixed', 'string', 'bytes']:
@@ -1077,8 +1083,10 @@ class DatumWriter(object):
       if (hasattr(writers_schema, 'logical_type') and
           writers_schema.logical_type == constants.DECIMAL):
         encoder.write_decimal_bytes(datum, writers_schema.get_prop('scale'))
-      else:
+      elif isinstance(datum, bytes):
         encoder.write_bytes(datum)
+      else:
+        encoder.write_utf8(datum)
     elif writers_schema.type == 'fixed':
       if (hasattr(writers_schema, 'logical_type') and
           writers_schema.logical_type == constants.DECIMAL):

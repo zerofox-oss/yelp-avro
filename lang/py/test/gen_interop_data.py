@@ -22,8 +22,8 @@ from avro import datafile
 
 DATUM = {
   'intField': 12,
-  'longField': 15234324L,
-  'stringField': unicode('hey'),
+  'longField': 15234324,
+  'stringField': u'hey',
   'boolField': True,
   'floatField': 1234.0,
   'doubleField': -1234.0,

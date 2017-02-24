@@ -18,18 +18,19 @@
 
 __all__=["TetherTask","TaskType","inputProtocol","outputProtocol","HTTPRequestor"]
 
-from avro import schema, protocol
-from avro import io as avio
-from avro import ipc
-
 import io as pyio
 import sys
 import os
 import traceback
 import logging
 import collections
-from StringIO import StringIO
 import threading
+
+from six import BytesIO
+
+from avro import schema, protocol
+from avro import io as avio
+from avro import ipc
 
 
 # create protocol objects for the input and output protocols
@@ -45,7 +46,7 @@ if (inputProtocol is None):
   if not(os.path.exists(pfile)):
     raise Exception("Could not locate the InputProtocol: {0} does not exist".format(pfile))
 
-  with file(pfile,'r') as hf:
+  with open(pfile,'r') as hf:
     prototxt=hf.read()
 
   inputProtocol=protocol.parse(prototxt)
@@ -61,7 +62,7 @@ if (outputProtocol is None):
   if not(os.path.exists(pfile)):
     raise Exception("Could not locate the OutputProtocol: {0} does not exist".format(pfile))
 
-  with file(pfile,'r') as hf:
+  with open(pfile,'r') as hf:
     prototxt=hf.read()
 
   outputProtocol=protocol.parse(prototxt)
@@ -87,7 +88,7 @@ class Collector(object):
       raise ValueError("output client can't be none.")
 
     self.scheme=scheme
-    self.buff=StringIO()
+    self.buff=BytesIO()
     self.encoder=avio.BinaryEncoder(self.buff)
 
     self.datum_writer = avio.DatumWriter(writers_schema=self.scheme)
@@ -104,6 +105,7 @@ class Collector(object):
     """
 
     self.buff.truncate(0)
+    self.buff.seek(0)  # py3: truncate no longer changes file position
     self.datum_writer.write(record, self.encoder);
     self.buff.flush();
     self.buff.seek(0)
@@ -117,7 +119,7 @@ class Collector(object):
       # a bytearray but the byte array must be pre-allocated
       # self.outputClient.output(self.buff.buffer.read())
 
-      #its not a StringIO
+      #its not a BytesIO
       self.outputClient.request("output",{"datum":self.buff.read()})
     else:
       self.outputClient.request("outputPartitioned",{"datum":self.buff.read(),"partition":partition})
@@ -373,7 +375,7 @@ class TetherTask(object):
     """
     try:
       # to avio.BinaryDecoder
-      bdata=StringIO(data)
+      bdata=BytesIO(data)
       decoder = avio.BinaryDecoder(bdata)
 
       for i in range(count):

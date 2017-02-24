@@ -16,11 +16,11 @@
 """
 Read/Write Avro File Object Containers.
 """
+
+from six import BytesIO
+
+import six
 import zlib
-try:
-  from cStringIO import StringIO
-except ImportError:
-  from StringIO import StringIO
 from avro import schema
 from avro import io
 try:
@@ -33,7 +33,7 @@ except ImportError:
 #
 
 VERSION = 1
-MAGIC = 'Obj' + chr(VERSION)
+MAGIC = b'Obj' + six.int2byte(VERSION)
 MAGIC_SIZE = len(MAGIC)
 SYNC_SIZE = 16
 SYNC_INTERVAL = 4000 * SYNC_SIZE # TODO(hammer): make configurable
@@ -82,7 +82,7 @@ class DataFileWriter(object):
     self._writer = writer
     self._encoder = io.BinaryEncoder(writer)
     self._datum_writer = datum_writer
-    self._buffer_writer = StringIO()
+    self._buffer_writer = BytesIO()
     self._buffer_encoder = io.BinaryEncoder(self._buffer_writer)
     self._block_count = 0
     self._meta = {}
@@ -189,6 +189,7 @@ class DataFileWriter(object):
 
       # reset buffer
       self.buffer_writer.truncate(0) 
+      self.buffer_writer.seek(0)  # py3: truncate no longer changes file position
       self.block_count = 0
 
   def append(self, datum):
@@ -219,7 +220,7 @@ class DataFileWriter(object):
     self.flush()
     self.writer.close()
 
-class DataFileReader(object):
+class DataFileReader(six.Iterator):
   """Read files written by DataFileWriter."""
   # TODO(hammer): allow user to specify expected schema?
   # TODO(hammer): allow user to specify the encoder
@@ -306,6 +307,9 @@ class DataFileReader(object):
 
     # set metadata
     self._meta = header['meta']
+    if six.PY3:
+      for key, value in self._meta.items():
+        self._meta[key] = value.decode('US-ASCII')
 
     # set sync marker
     self._sync_marker = header['sync']
@@ -323,13 +327,13 @@ class DataFileReader(object):
       # -15 is the log of the window size; negative indicates
       # "raw" (no zlib headers) decompression.  See zlib.h.
       uncompressed = zlib.decompress(data, -15)
-      self._datum_decoder = io.BinaryDecoder(StringIO(uncompressed))
+      self._datum_decoder = io.BinaryDecoder(BytesIO(uncompressed))
     elif self.codec == 'snappy':
       # Compressed data includes a 4-byte CRC32 checksum
       length = self.raw_decoder.read_long()
       data = self.raw_decoder.read(length - 4)
       uncompressed = snappy.decompress(data)
-      self._datum_decoder = io.BinaryDecoder(StringIO(uncompressed))
+      self._datum_decoder = io.BinaryDecoder(BytesIO(uncompressed))
       self.raw_decoder.check_crc32(uncompressed);
     else:
       raise DataFileException("Unknown codec: %r" % self.codec)
@@ -348,7 +352,7 @@ class DataFileReader(object):
 
   # TODO(hammer): handle block of length zero
   # TODO(hammer): clean this up with recursion
-  def next(self):
+  def __next__(self):
     """Return the next datum in the file."""
     if self.block_count == 0:
       if self.is_EOF():
@@ -373,4 +377,4 @@ def generate_sixteen_random_bytes():
     return os.urandom(16)
   except:
     import random
-    return [ chr(random.randrange(256)) for i in range(16) ]
+    return bytearray([ random.randrange(256) for i in range(16) ])

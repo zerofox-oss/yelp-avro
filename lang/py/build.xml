@@ -28,7 +28,7 @@
   <property name="top.build" value="${basedir}/../../build"/>
   <property name="interop.data.dir" value="${top.build}/interop/data"/>
 
-  <property name="python" value="python2.7"/>
+  <property name="python" value="python"/>
 
   <!-- Python implementation directories -->
   <property name="build.dir" value="${basedir}/build"/>
