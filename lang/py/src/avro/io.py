@@ -92,10 +92,12 @@ STRUCT_SIGNED_LONG = struct_class('>q')     # big-endian signed long
 
 class AvroTypeException(schema.AvroException):
   """Raised when datum is not an example of schema."""
-  def __init__(self, expected_schema, datum):
+  def __init__(self, expected_schema, datum, extra_msg=None):
     pretty_expected = json.dumps(json.loads(str(expected_schema)), indent=2)
     fail_msg = "The datum %s is not an example of the schema %s"\
                % (datum, pretty_expected)
+    if extra_msg:
+      fail_msg += '\n\nThe following fields failed to validate:\n' + extra_msg
     schema.AvroException.__init__(self, fail_msg)
 
 class SchemaResolutionException(schema.AvroException):
@@ -106,6 +108,23 @@ class SchemaResolutionException(schema.AvroException):
     if readers_schema: fail_msg += "\nReader's Schema: %s" % pretty_readers
     schema.AvroException.__init__(self, fail_msg)
 
+class ValidationResult(object):
+    def __new__(cls, err=None):
+        if err:
+            return super(ValidationResult, cls).__new__(cls)
+        return True
+
+    def __init__(self, err):
+        self.err = err
+
+    def __bool__(self):
+        return False
+    __nonzero__ = __bool__
+
+    @property
+    def msg(self):
+        return self.err
+
 #
 # Validate
 #
@@ -115,58 +134,120 @@ def _is_timezone_aware_datetime(dt):
 
 def validate(expected_schema, datum):
   """Determine if a python datum is an instance of a schema."""
+  BASE_ERR = 'Expected "{0}" found {1}'
   schema_type = expected_schema.type
   if schema_type == 'null':
-    return datum is None
+    return ValidationResult(
+      None if datum is None else BASE_ERR.format(schema_type, type(datum))
+    )
   elif schema_type == 'boolean':
-    return isinstance(datum, bool)
+    return ValidationResult(
+      None if isinstance(datum, bool) else BASE_ERR.format(schema_type, type(datum))
+    )
   elif schema_type == 'string':
-    return isinstance(datum, six.string_types)
+    return ValidationResult(
+      None if isinstance(datum, six.string_types) else BASE_ERR.format(schema_type, type(datum))
+    )
   elif schema_type == 'bytes':
     if (hasattr(expected_schema, 'logical_type') and
-        expected_schema.logical_type == constants.DECIMAL):
-      return isinstance(datum, Decimal)
-    return isinstance(datum, bytes)
+      expected_schema.logical_type == constants.DECIMAL):
+      return ValidationResult(
+        None if isinstance(datum, Decimal)
+        else BASE_ERR.format(expected_schema.logical_type, type(datum))
+      )
+    return ValidationResult(
+      None if isinstance(datum, bytes) else BASE_ERR.format(schema_type, type(datum))
+    )
   elif schema_type == 'int':
     if hasattr(expected_schema, 'logical_type'):
       if expected_schema.logical_type == constants.DATE:
-        return isinstance(datum, datetime.date)
+        return ValidationResult(
+          None if isinstance(datum, datetime.date)
+          else BASE_ERR.format(expected_schema.logical_type, type(datum))
+        )
       elif expected_schema.logical_type == constants.TIME_MILLIS:
-        return isinstance(datum, datetime.time)
-    return (isinstance(datum, six.integer_types)
-            and INT_MIN_VALUE <= datum <= INT_MAX_VALUE)
+        return ValidationResult(
+          None if isinstance(datum, datetime.time)
+          else BASE_ERR.format(expected_schema.logical_type, type(datum))
+        )
+    _valid = isinstance(datum, six.integer_types) and INT_MIN_VALUE <= datum <= INT_MAX_VALUE
+    return ValidationResult(
+      None if _valid else BASE_ERR.format(schema_type, type(datum))
+    )
   elif schema_type == 'long':
     if hasattr(expected_schema, 'logical_type'):
       if expected_schema.logical_type == constants.TIME_MICROS:
-        return isinstance(datum, datetime.time)
+        return ValidationResult(
+          None if isinstance(datum, datetime.time)
+          else BASE_ERR.format(expected_schema.logical_type, type(datum))
+        )
       elif expected_schema.logical_type in [constants.TIMESTAMP_MILLIS, constants.TIMESTAMP_MICROS]:
-        return isinstance(datum, datetime.datetime) and _is_timezone_aware_datetime(datum)
-    return (isinstance(datum, six.integer_types)
-            and LONG_MIN_VALUE <= datum <= LONG_MAX_VALUE)
+        _valid = isinstance(datum, datetime.datetime) and _is_timezone_aware_datetime(datum)
+        return ValidationResult(
+          None if _valid else BASE_ERR.format(expected_schema.logical_type, type(datum))
+        )
+    _valid = isinstance(datum, six.integer_types) and LONG_MIN_VALUE <= datum <= LONG_MAX_VALUE
+    return ValidationResult(
+      None if _valid else BASE_ERR.format(schema_type, type(datum))
+    )
   elif schema_type in ['float', 'double']:
-    return isinstance(datum, six.integer_types + (float,))
+    return ValidationResult(
+      None if isinstance(datum, six.integer_types + (float,))
+      else BASE_ERR.format(schema_type, type(datum))
+    )
   # Check for int, float, long and decimal
   elif schema_type == 'fixed':
     if (hasattr(expected_schema, 'logical_type') and
         expected_schema.logical_type == constants.DECIMAL):
-      return isinstance(datum, Decimal)
-    return isinstance(datum, bytes) and len(datum) == expected_schema.size
+      return ValidationResult(
+        None if isinstance(datum, Decimal)
+        else BASE_ERR.format(expected_schema.logical_type, type(datum))
+      )
+    if not isinstance(datum, bytes):
+      return ValidationResult(BASE_ERR.format(schema_type, type(datum)))
+    elif len(datum) != expected_schema.size:
+      return ValidationResult(
+        'Fixed type with invalid size, expected "{0}" bytes found "{1}" bytes'.format(
+          expected_schema.size, len(datum)
+        )
+      )
+    else:
+      return ValidationResult()
   elif schema_type == 'enum':
-    return datum in expected_schema.symbols
+    return ValidationResult(
+      None if datum in expected_schema.symbols
+      else '"{0}" is not among expected symbols {1}'.format(datum, expected_schema.symbols)
+    )
   elif schema_type == 'array':
-    return (isinstance(datum, list) and
-      False not in [validate(expected_schema.items, d) for d in datum])
+    if not isinstance(datum, list):
+      return ValidationResult(BASE_ERR.format(schema_type, type(datum)))
+    items = [validate(expected_schema.items, d) for d in datum]
+    if all(items): return ValidationResult()
+    return ValidationResult('\n'.join([e.msg for e in items if not e]))
   elif schema_type == 'map':
-    return (isinstance(datum, dict) and
-      False not in [isinstance(k, six.string_types) for k in datum.keys()] and
-      False not in
-        [validate(expected_schema.values, v) for v in datum.values()])
+    if not isinstance(datum, dict):
+      return ValidationResult(BASE_ERR.format(schema_type, type(datum)))
+    if False in [isinstance(k, six.string_types) for k in datum.keys()]:
+      return ValidationResult('Map keys must be string typed')
+    items = [validate(expected_schema.values, v) for v in datum.values()]
+    if all(items): return ValidationResult()
+    return ValidationResult('\n'.join([e.msg for e in items if not e]))
   elif schema_type in ['union', 'error_union']:
-    return True in [validate(s, datum) for s in expected_schema.schemas]
+    if any([validate(s, datum) for s in expected_schema.schemas]):
+      return ValidationResult()
+    return ValidationResult('"{0}" is not an example of any {1} schema'.format(schema_type, datum))
   elif schema_type in ['record', 'error', 'request']:
-    return (isinstance(datum, dict) and
-      False not in
-        [validate(f.type, datum.get(f.name)) for f in expected_schema.fields])
+    if not isinstance(datum, dict):
+      return ValidationResult(BASE_ERR.format(schema_type, type(datum)))
+    err_info = []
+    for f in expected_schema.fields:
+      res = validate(f.type, datum.get(f.name))
+      if not res:
+        err_info.append('"{0}": {1}'.format(
+          f.name,
+          res.msg if datum.get(f.name) else 'Required but not found')
+        )
+    return ValidationResult("\n".join(err_info))
 
 #
 # Decoder/Encoder
@@ -1041,8 +1122,9 @@ class DatumWriter(object):
 
   def write(self, datum, encoder):
     # validate datum
-    if not validate(self.writers_schema, datum):
-      raise AvroTypeException(self.writers_schema, datum)
+    res = validate(self.writers_schema, datum)
+    if not res:
+      raise AvroTypeException(self.writers_schema, datum, res.msg)
     
     self.write_data(self.writers_schema, datum, encoder)
 
