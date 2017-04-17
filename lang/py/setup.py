@@ -29,7 +29,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 setup(
   name = 'yelp-avro',
-  version = '1.10.0',
+  version = '1.11.0',
   packages=find_packages('src', exclude=('tests*',)),
   package_dir = {'': 'src'},
   scripts = ["scripts/avro"],
