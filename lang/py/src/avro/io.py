@@ -40,7 +40,6 @@ import struct
 import sys
 import datetime
 import six
-from six import int2byte as chr
 from binascii import crc32
 from decimal import Decimal
 from decimal import getcontext
@@ -350,7 +349,7 @@ class BinaryDecoder(object):
     leftmost_bit = (msb >> 7) & 1
     if leftmost_bit == 1:
       modified_first_byte = ord(datum[:1]) ^ (1 << 7)
-      datum = chr(modified_first_byte) + datum[1:]
+      datum = unichr(modified_first_byte) + datum[1:]
       for offset in range(size):
         unscaled_datum <<= 8
         unscaled_datum += ord(datum[offset:offset+1])
@@ -377,7 +376,7 @@ class BinaryDecoder(object):
     A string is encoded as a long followed by
     that many bytes of UTF-8 encoded character data.
     """
-    return self.read_bytes().decode("utf-8")
+    return self.read_bytes()
 
   def read_date_from_int(self):
     """
@@ -499,9 +498,9 @@ class BinaryEncoder(object):
     whose value is either 0 (false) or 1 (true).
     """
     if datum:
-      self.write(chr(1))
+      self.write(unichr(1))
     else:
-      self.write(chr(0))
+      self.write(unichr(0))
 
   def write_int(self, datum):
     """
@@ -515,9 +514,9 @@ class BinaryEncoder(object):
     """
     datum = (datum << 1) ^ (datum >> 63)
     while (datum & ~0x7F) != 0:
-      self.write(chr((datum & 0x7f) | 0x80))
+      self.write(unichr((datum & 0x7f) | 0x80))
       datum >>= 7
-    self.write(chr(datum))
+    self.write(unichr(datum))
 
   def write_float(self, datum):
     """
@@ -526,10 +525,10 @@ class BinaryEncoder(object):
     Java's floatToIntBits and then encoded in little-endian format.
     """
     bits = STRUCT_INT.unpack(STRUCT_FLOAT.pack(datum))[0]
-    self.write(chr((bits) & 0xFF))
-    self.write(chr((bits >> 8) & 0xFF))
-    self.write(chr((bits >> 16) & 0xFF))
-    self.write(chr((bits >> 24) & 0xFF))
+    self.write(unichr((bits) & 0xFF))
+    self.write(unichr((bits >> 8) & 0xFF))
+    self.write(unichr((bits >> 16) & 0xFF))
+    self.write(unichr((bits >> 24) & 0xFF))
 
   def write_double(self, datum):
     """
@@ -538,14 +537,14 @@ class BinaryEncoder(object):
     Java's doubleToLongBits and then encoded in little-endian format.
     """
     bits = STRUCT_LONG.unpack(STRUCT_DOUBLE.pack(datum))[0]
-    self.write(chr((bits) & 0xFF))
-    self.write(chr((bits >> 8) & 0xFF))
-    self.write(chr((bits >> 16) & 0xFF))
-    self.write(chr((bits >> 24) & 0xFF))
-    self.write(chr((bits >> 32) & 0xFF))
-    self.write(chr((bits >> 40) & 0xFF))
-    self.write(chr((bits >> 48) & 0xFF))
-    self.write(chr((bits >> 56) & 0xFF))
+    self.write(unichr((bits) & 0xFF))
+    self.write(unichr((bits >> 8) & 0xFF))
+    self.write(unichr((bits >> 16) & 0xFF))
+    self.write(unichr((bits >> 24) & 0xFF))
+    self.write(unichr((bits >> 32) & 0xFF))
+    self.write(unichr((bits >> 40) & 0xFF))
+    self.write(unichr((bits >> 48) & 0xFF))
+    self.write(unichr((bits >> 56) & 0xFF))
 
   def write_decimal_bytes(self, datum, scale):
     """
@@ -572,7 +571,7 @@ class BinaryEncoder(object):
     self.write_long(bytes_req)
     for index in range(bytes_req-1, -1, -1):
       bits_to_write = packed_bits >> (8 * index)
-      self.write(chr(bits_to_write & 0xff))
+      self.write(unichr(bits_to_write & 0xff))
 
   def write_decimal_fixed(self, datum, scale, size):
     """
@@ -607,20 +606,21 @@ class BinaryEncoder(object):
       unscaled_datum = mask | unscaled_datum
       for index in range(size-1, -1, -1):
         bits_to_write = unscaled_datum >> (8 * index)
-        self.write(chr(bits_to_write & 0xff))
+        self.write(unichr(bits_to_write & 0xff))
     else:
       for i in range(int(offset_bits/8)):
-        self.write(chr(0))
+        self.write(unichr(0))
       for index in range(bytes_req-1, -1, -1):
         bits_to_write = unscaled_datum >> (8 * index)
-        self.write(chr(bits_to_write & 0xff))
+        self.write(unichr(bits_to_write & 0xff))
 
   def write_bytes(self, datum):
     """
     Bytes are encoded as a long followed by that many bytes of data. 
     """
-    self.write_long(len(datum))
-    self.write(struct.pack(b'%ds' % len(datum), datum))
+    b = struct.pack(b'%ds' % len(datum), datum).decode('utf-8')
+    self.write_long(len(b))
+    self.write(b)
 
   def write_utf8(self, datum):
     """
